@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Development-only services (run backend/frontend via npm locally)
+# Usage: docker compose -f docker-compose.dev.yml up -d
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: ai-interview-mongo-dev
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_dev_data:/data/db
+    networks:
+      - dev-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-interview-redis-dev
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    networks:
+      - dev-network
+
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: ai-interview-piston-dev
+    restart: unless-stopped
+    ports:
+      - '2000:2000'
+    tmpfs:
+      - /piston/jobs:exec,uid=1000,gid=1000
+    privileged: true
+    networks:
+      - dev-network
+
+volumes:
+  mongo_dev_data:
+
+networks:
+  dev-network:
+    driver: bridge

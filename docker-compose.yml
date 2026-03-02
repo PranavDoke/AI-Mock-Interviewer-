@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # MongoDB database
+  mongo:
+    image: mongo:7
+    container_name: ai-interview-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app-network
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: ai-interview-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+
+  # Piston code execution engine
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: ai-interview-piston
+    restart: unless-stopped
+    ports:
+      - '2000:2000'
+    tmpfs:
+      - /piston/jobs:exec,uid=1000,gid=1000
+    privileged: true
+    networks:
+      - app-network
+
+  # Backend API server
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: ai-interview-server
+    restart: unless-stopped
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGODB_URI: mongodb://admin:password123@mongo:27017/ai-interview?authSource=admin
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production
+      JWT_ACCESS_EXPIRATION_MINUTES: 30
+      JWT_REFRESH_EXPIRATION_DAYS: 7
+      AI_PROVIDER: mock
+      AI_API_KEY: ''
+      AI_MODEL: ''
+      PISTON_URL: http://piston:2000
+      REDIS_URL: redis://redis:6379
+      CORS_ORIGIN: http://localhost
+    depends_on:
+      - mongo
+      - redis
+      - piston
+    networks:
+      - app-network
+
+  # Frontend (production build served via nginx)
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: ai-interview-client
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      - server
+    networks:
+      - app-network
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
