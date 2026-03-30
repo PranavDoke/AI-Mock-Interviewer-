@@ -28,8 +28,8 @@ const ProfilePage = () => {
   const [profileForm, setProfileForm] = useState({
     name: '',
     preferences: {
-      language: 'javascript',
-      duration: 30,
+      preferredLanguage: 'javascript',
+      interviewDuration: 30,
     },
   });
 

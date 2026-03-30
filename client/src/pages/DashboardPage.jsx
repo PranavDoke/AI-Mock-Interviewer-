@@ -57,6 +57,11 @@ const DashboardPage = () => {
   const stats = dashboard?.overall || {};
   const recentSessions = dashboard?.recentPerformance || [];
   const topicBreakdown = dashboard?.topics || [];
+  const skillTopicEntries = user?.skillProfile?.topics
+    ? user.skillProfile.topics instanceof Map
+      ? Array.from(user.skillProfile.topics.entries())
+      : Object.entries(user.skillProfile.topics)
+    : [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -215,12 +220,12 @@ const DashboardPage = () => {
           )}
 
           {/* Skill Badges */}
-          {user?.skillProfile && Object.keys(user.skillProfile).length > 0 && (
+          {skillTopicEntries.length > 0 && (
             <div className="mt-4 pt-4 border-t border-gray-800">
               <p className="text-sm text-gray-400 mb-2">Your skill levels</p>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(user.skillProfile).map(([topic, data]) => (
-                  <TopicBadge key={topic} topic={topic} level={data.level || 1} />
+                {skillTopicEntries.map(([topic, data]) => (
+                  <TopicBadge key={topic} topic={topic} level={data?.level || 1} />
                 ))}
               </div>
             </div>

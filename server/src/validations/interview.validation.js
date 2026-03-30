@@ -19,7 +19,7 @@ const submitAnswer = {
     code: Joi.string().allow('').max(50000),
     language: Joi.string().valid('javascript', 'python', 'cpp', 'java', 'c'),
     explanation: Joi.string().allow('').max(10000),
-    timeSpentMs: Joi.number().integer().min(0).default(0),
+    timeSpentMs: Joi.number().integer().min(0).max(8 * 60 * 60 * 1000).default(0),
   }),
 };
 

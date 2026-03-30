@@ -108,8 +108,15 @@ const SessionResultPage = () => {
   const scores = session.scores || {};
   const submissions = session.submissions || [];
   const config = session.config || {};
+  const topicScoresEntries = Array.isArray(scores.topicScores)
+    ? scores.topicScores
+    : scores.topicScores instanceof Map
+    ? Array.from(scores.topicScores.entries())
+    : Object.entries(scores.topicScores || {});
   const durationMin = session.durationMs
     ? Math.round(session.durationMs / 60000)
+    : session.completedAt && session.startedAt
+    ? Math.round((new Date(session.completedAt).getTime() - new Date(session.startedAt).getTime()) / 60000)
     : null;
 
   return (
@@ -228,11 +235,11 @@ const SessionResultPage = () => {
       )}
 
       {/* Topic Scores */}
-      {scores.topicScores && Object.keys(scores.topicScores).length > 0 && (
+      {topicScoresEntries.length > 0 && (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-6">
           <h2 className="text-lg font-semibold text-white mb-4">Topic Scores</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {Object.entries(scores.topicScores).map(([topic, score]) => (
+            {topicScoresEntries.map(([topic, score]) => (
               <div key={topic} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-300 capitalize">{topic.replace(/-/g, ' ')}</span>
@@ -305,6 +312,12 @@ const SessionResultPage = () => {
               {sub.evaluation?.feedback && (
                 <p className="text-gray-400 text-sm line-clamp-2">
                   {sub.evaluation.feedback}
+                </p>
+              )}
+
+              {sub.evaluation?.testPassRate != null && (
+                <p className="text-xs text-blue-300 mt-2">
+                  Test Pass Rate: {Math.round(sub.evaluation.testPassRate)}%
                 </p>
               )}
 

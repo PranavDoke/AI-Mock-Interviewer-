@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { startSession } from '../store/interviewSlice';
+import { abandonSession, startSession } from '../store/interviewSlice';
+import { interviewAPI } from '../services/endpoints';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { FiPlay, FiCode, FiHash, FiClock, FiSliders } from 'react-icons/fi';
 
@@ -14,10 +15,10 @@ const LANGUAGES = [
 ];
 
 const TOPICS = [
-  'arrays', 'strings', 'linked-lists', 'stacks-queues',
+  'arrays', 'strings', 'linked-lists', 'stacks', 'queues',
   'trees', 'graphs', 'hash-tables', 'sorting',
   'searching', 'dynamic-programming', 'greedy', 'backtracking',
-  'bit-manipulation', 'math', 'recursion', 'oop',
+  'bit-manipulation', 'math', 'recursion', 'design-patterns', 'system-design', 'databases',
 ];
 
 const DURATIONS = [15, 30, 45, 60, 90];
@@ -32,10 +33,30 @@ const InterviewSetupPage = () => {
   const [config, setConfig] = useState({
     language: user?.preferences?.preferredLanguage || 'javascript',
     topics: user?.preferences?.preferredTopics?.length ? user.preferences.preferredTopics : ['arrays'],
-    totalQuestions: 5,
-    duration: user?.preferences?.interviewDuration || 30,
+    maxQuestions: 5,
+    timeLimitMinutes: user?.preferences?.interviewDuration || 30,
+    type: 'technical',
     difficulty: null, // auto
   });
+  const [activeSession, setActiveSession] = useState(null);
+  const [isCheckingActive, setIsCheckingActive] = useState(true);
+  const [isAbandoning, setIsAbandoning] = useState(false);
+
+  useEffect(() => {
+    const loadActiveSession = async () => {
+      try {
+        const { data } = await interviewAPI.listSessions({ status: 'active', limit: 1, page: 1 });
+        const sessions = data?.data || [];
+        setActiveSession(sessions.length > 0 ? sessions[0] : null);
+      } catch {
+        setActiveSession(null);
+      } finally {
+        setIsCheckingActive(false);
+      }
+    };
+
+    loadActiveSession();
+  }, []);
 
   const toggleTopic = (topic) => {
     setConfig((prev) => {
@@ -47,9 +68,32 @@ const InterviewSetupPage = () => {
   };
 
   const handleStart = async () => {
+    if (activeSession?._id) {
+      return;
+    }
+
     const result = await dispatch(startSession(config));
     if (result.payload?.session?._id) {
       navigate(`/interview/${result.payload.session._id}`);
+    }
+  };
+
+  const handleContinueActive = () => {
+    if (!activeSession?._id) return;
+    navigate(`/interview/${activeSession._id}`);
+  };
+
+  const handleAbandonActive = async () => {
+    if (!activeSession?._id || isAbandoning) return;
+
+    setIsAbandoning(true);
+    try {
+      const result = await dispatch(abandonSession(activeSession._id));
+      if (result.meta.requestStatus === 'fulfilled') {
+        setActiveSession(null);
+      }
+    } finally {
+      setIsAbandoning(false);
     }
   };
 
@@ -61,6 +105,38 @@ const InterviewSetupPage = () => {
       </div>
 
       <div className="space-y-8">
+        {isCheckingActive ? (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div className="flex items-center space-x-3 text-gray-300">
+              <LoadingSpinner size="sm" />
+              <span>Checking for active interview sessions...</span>
+            </div>
+          </div>
+        ) : activeSession ? (
+          <div className="bg-amber-900/20 border border-amber-700 rounded-xl p-6">
+            <h2 className="text-lg font-semibold text-amber-300">Active session detected</h2>
+            <p className="text-sm text-amber-100/80 mt-2">
+              You already have an active interview session. Continue or abandon it before
+              starting a new one.
+            </p>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <button
+                onClick={handleContinueActive}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+              >
+                Continue Session
+              </button>
+              <button
+                onClick={handleAbandonActive}
+                disabled={isAbandoning}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+              >
+                {isAbandoning ? 'Abandoning...' : 'Abandon Session'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {/* Language Selection */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-white flex items-center space-x-2 mb-4">
@@ -122,9 +198,9 @@ const InterviewSetupPage = () => {
               {DURATIONS.map((d) => (
                 <button
                   key={d}
-                  onClick={() => setConfig((p) => ({ ...p, duration: d }))}
+                  onClick={() => setConfig((p) => ({ ...p, timeLimitMinutes: d }))}
                   className={`py-2 rounded-lg text-sm font-medium transition-all ${
-                    config.duration === d
+                    config.timeLimitMinutes === d
                       ? 'bg-yellow-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                   }`}
@@ -144,9 +220,9 @@ const InterviewSetupPage = () => {
               {QUESTION_COUNTS.map((q) => (
                 <button
                   key={q}
-                  onClick={() => setConfig((p) => ({ ...p, totalQuestions: q }))}
+                  onClick={() => setConfig((p) => ({ ...p, maxQuestions: q }))}
                   className={`py-2 rounded-lg text-sm font-medium transition-all ${
-                    config.totalQuestions === q
+                    config.maxQuestions === q
                       ? 'bg-purple-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                   }`}
@@ -194,7 +270,7 @@ const InterviewSetupPage = () => {
         {/* Start Button */}
         <button
           onClick={handleStart}
-          disabled={isLoading || config.topics.length === 0}
+          disabled={isLoading || config.topics.length === 0 || isCheckingActive || !!activeSession}
           className="w-full flex items-center justify-center space-x-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg py-4 rounded-xl transition-colors"
         >
           {isLoading ? (

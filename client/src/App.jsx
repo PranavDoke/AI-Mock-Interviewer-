@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { loadUser } from './store/authSlice';
+import { loadUser, setAuthResolvedUnauthenticated } from './store/authSlice';
 
 // Pages
 import LoginPage from './pages/LoginPage';
@@ -28,8 +28,8 @@ function App() {
     if (token) {
       dispatch(loadUser());
     } else {
-      // No token, stop loading
-      dispatch({ type: 'auth/loadUser/rejected' });
+      // No token, resolve auth bootstrap explicitly
+      dispatch(setAuthResolvedUnauthenticated());
     }
   }, [dispatch]);
 

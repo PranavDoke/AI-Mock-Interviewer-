@@ -66,6 +66,12 @@ const authSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    setAuthResolvedUnauthenticated: (state) => {
+      state.isLoading = false;
+      state.isAuthenticated = false;
+      state.user = null;
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -110,6 +116,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = false;
         state.user = null;
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
       })
       // Logout
       .addCase(logoutUser.fulfilled, (state) => {
@@ -120,5 +128,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError } = authSlice.actions;
+export const { clearError, setAuthResolvedUnauthenticated } = authSlice.actions;
 export default authSlice.reducer;

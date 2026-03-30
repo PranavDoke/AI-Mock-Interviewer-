@@ -14,6 +14,7 @@ import CodeEditor from '../components/CodeEditor';
 import Timer from '../components/Timer';
 import FeedbackPanel from '../components/FeedbackPanel';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { executionAPI } from '../services/endpoints';
 import {
   FiPlay,
   FiSend,
@@ -63,6 +64,9 @@ const InterviewPage = () => {
   const [customInput, setCustomInput] = useState('');
   const [showConsole, setShowConsole] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
+  const [executionHealth, setExecutionHealth] = useState('checking');
+  const [lastHealthCheckedAt, setLastHealthCheckedAt] = useState(null);
+  const [nowTs, setNowTs] = useState(Date.now());
 
   // Redirect if no active session
   useEffect(() => {
@@ -78,8 +82,67 @@ const InterviewPage = () => {
     }
   }, [isComplete, session, navigate]);
 
+  const checkExecutionHealth = useCallback(async (silent = false) => {
+    if (!silent) {
+      setExecutionHealth('checking');
+    }
+    try {
+      const { data } = await executionAPI.healthCheck();
+      const status = data?.data?.status === 'healthy' ? 'healthy' : 'unhealthy';
+      setExecutionHealth(status);
+    } catch {
+      setExecutionHealth('unhealthy');
+    } finally {
+      setLastHealthCheckedAt(new Date());
+    }
+  }, []);
+
+  const getRelativeCheckedLabel = () => {
+    if (!lastHealthCheckedAt) {
+      return '';
+    }
+
+    const diffSeconds = Math.max(0, Math.floor((nowTs - lastHealthCheckedAt.getTime()) / 1000));
+    if (diffSeconds < 60) {
+      return `checked ${diffSeconds}s ago`;
+    }
+
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    return `checked ${diffMinutes}m ago`;
+  };
+
+  const lastCheckedLabel = getRelativeCheckedLabel();
+
+  useEffect(() => {
+    checkExecutionHealth();
+  }, [checkExecutionHealth]);
+
+  useEffect(() => {
+    if (executionHealth !== 'unhealthy') {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      checkExecutionHealth(true);
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [executionHealth, checkExecutionHealth]);
+
+  useEffect(() => {
+    const ticker = setInterval(() => {
+      setNowTs(Date.now());
+    }, 1000);
+
+    return () => clearInterval(ticker);
+  }, []);
+
   const handleRunCode = useCallback(() => {
-    if (!code.trim()) return;
+    if (!code.trim()) {
+      setShowConsole(true);
+      return;
+    }
+
     dispatch(
       executeCode({
         code,
@@ -126,6 +189,16 @@ const InterviewPage = () => {
   const language = session.config?.language || 'javascript';
   const maxQuestions = session.config?.maxQuestions || 5;
   const questionNumber = maxQuestions - questionsRemaining;
+  const stdoutText = (executionResult?.stdout || '').trim();
+  const stderrText = (executionResult?.stderr || '').trim();
+  const compileText = (executionResult?.compileOutput || '').trim();
+  const hasExecutionError = !!stderrText || (executionResult?.exitCode ?? 0) !== 0;
+  const consoleOutputText = stdoutText || stderrText || compileText ||
+    (executionResult
+      ? hasExecutionError
+        ? `Execution failed (exit code: ${executionResult?.exitCode ?? 'unknown'}) with no error output.`
+        : 'No output'
+      : '');
 
   return (
     <div className="h-screen flex flex-col bg-gray-950">
@@ -291,6 +364,28 @@ const InterviewPage = () => {
                 )}
                 <span>Run</span>
               </button>
+              {executionHealth === 'unhealthy' && (
+                <>
+                  <div className="flex items-center space-x-1.5 text-red-400 text-xs">
+                    <FiAlertTriangle className="w-3.5 h-3.5" />
+                    <span>Code runner offline</span>
+                  </div>
+                  {lastCheckedLabel && (
+                    <span className="text-gray-500 text-xs">{lastCheckedLabel}</span>
+                  )}
+                  <button
+                    onClick={checkExecutionHealth}
+                    className="text-xs text-blue-400 hover:text-blue-300 px-2 py-1"
+                  >
+                    Retry
+                  </button>
+                </>
+              )}
+              {executionHealth === 'checking' && (
+                <span className="text-gray-500 text-xs">
+                  Checking runner...{lastCheckedLabel ? ` (${lastCheckedLabel})` : ''}
+                </span>
+              )}
               <button
                 onClick={() => setShowConsole(!showConsole)}
                 className="flex items-center space-x-1.5 text-gray-400 hover:text-gray-300 text-sm px-3 py-2"
@@ -320,11 +415,9 @@ const InterviewPage = () => {
                 <span className="text-xs text-gray-400 font-medium">Console Output</span>
                 {executionResult && (
                   <span
-                    className={`text-xs ${
-                      (executionResult.stderr || executionResult.exitCode !== 0) ? 'text-red-400' : 'text-green-400'
-                    }`}
+                    className={`text-xs ${hasExecutionError ? 'text-red-400' : 'text-green-400'}`}
                   >
-                    {(executionResult.stderr || executionResult.exitCode !== 0) ? 'Error' : 'Success'}
+                    {hasExecutionError ? 'Error' : 'Success'}
                   </span>
                 )}
               </div>
@@ -348,14 +441,23 @@ const InterviewPage = () => {
                     </div>
                   ) : executionResult ? (
                     <pre
-                      className={`text-sm font-mono whitespace-pre-wrap ${
-                        (executionResult.stderr || executionResult.exitCode !== 0) ? 'text-red-400' : 'text-green-300'
-                      }`}
+                      className={`text-sm font-mono whitespace-pre-wrap ${hasExecutionError ? 'text-red-400' : 'text-green-300'}`}
                     >
-                      {executionResult.stdout || executionResult.stderr || executionResult.compileOutput || 'No output'}
+                      {consoleOutputText}
                     </pre>
+                  ) : executionHealth === 'unhealthy' ? (
+                    <p className="text-red-400 text-sm">
+                      Code execution service is currently unavailable. Start or restart the code runner and try again.
+                    </p>
                   ) : (
                     <p className="text-gray-600 text-sm">Run your code to see output here</p>
+                  )}
+
+                  {executionResult && (
+                    <div className="mt-2 pt-2 border-t border-gray-800 text-xs text-gray-500 flex items-center gap-4">
+                      <span>Exit code: {executionResult.exitCode ?? 'N/A'}</span>
+                      <span>Time: {executionResult.executionTimeMs ?? 'N/A'} ms</span>
+                    </div>
                   )}
                 </div>
               </div>

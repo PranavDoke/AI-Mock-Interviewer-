@@ -174,30 +174,65 @@ Provide a constructive summary in EXACTLY this JSON format (no markdown, no extr
 // Mock responses (for development without AI API)
 // ------------------------------------------------------------------
 const MOCK_RESPONSES = {
-  evaluateCode: () => ({
-    codeCorrectness: 65 + Math.floor(Math.random() * 25),
-    codeQuality: 60 + Math.floor(Math.random() * 30),
-    feedback: 'Your solution demonstrates a solid understanding of the problem. Consider optimizing the time complexity and handling more edge cases.',
-    strengths: ['Correct base logic', 'Clean code structure'],
-    improvements: ['Add edge case handling', 'Consider space optimization'],
-  }),
+  evaluateCode: () => {
+    const correctness = 65 + Math.floor(Math.random() * 25);
+    const quality = 60 + Math.floor(Math.random() * 30);
+    return {
+      codeCorrectness: correctness,
+      codeQuality: quality,
+      feedback: correctness >= 80 
+        ? 'Excellent! Your solution is almost perfect. Minor improvements could be made in code organization.'
+        : correctness >= 60
+        ? 'Good solution with solid logic. Consider optimizing for edge cases and improving time complexity.'
+        : 'Your solution shows potential but needs improvement. Focus on handling edge cases and core algorithm correctness.',
+      strengths: correctness >= 70 
+        ? ['Correct algorithm', 'Good code structure', 'Handles main test cases']
+        : ['Shows understanding of problem', 'Reasonable approach'],
+      improvements: quality < 70
+        ? ['Add error handling', 'Consider refactoring for readability', 'Optimize time complexity']
+        : ['Minor code cleanup', 'Add comments for clarity'],
+    };
+  },
 
-  evaluateExplanation: () => ({
-    explanationClarity: 60 + Math.floor(Math.random() * 30),
-    reasoningDepth: 55 + Math.floor(Math.random() * 35),
-    structuredThinking: 60 + Math.floor(Math.random() * 30),
-    feedback: 'Good explanation with clear reasoning. Try to discuss trade-offs and alternative approaches more.',
-    strengths: ['Clear communication'],
-    improvements: ['Discuss time/space trade-offs'],
-  }),
+  evaluateExplanation: () => {
+    const clarity = 60 + Math.floor(Math.random() * 30);
+    const depth = 55 + Math.floor(Math.random() * 35);
+    const thinking = 60 + Math.floor(Math.random() * 30);
+    return {
+      explanationClarity: clarity,
+      reasoningDepth: depth,
+      structuredThinking: thinking,
+      feedback: clarity >= 75
+        ? 'Clear and well-structured explanation. You communicated your approach effectively.'
+        : 'Your explanation is reasonable. Try to be more specific about the approach and trade-offs involved.',
+      strengths: depth >= 70
+        ? ['Clear logical flow', 'Good problem analysis']
+        : ['Shows understanding'],
+      improvements: depth < 75
+        ? ['Discuss time/space complexity trade-offs', 'Explain algorithmic choices']
+        : ['Consider edge cases in explanation'],
+    };
+  },
 
-  generateSessionSummary: (session) => ({
-    overallFeedback: `You completed the session with a score of ${session.scores?.overall || 0}%. Your performance shows consistent improvement across questions.`,
-    strengths: ['Completed all questions', 'Good problem-solving approach'],
-    weaknesses: ['Time management could improve'],
-    recommendations: ['Practice timed coding exercises', 'Review data structure fundamentals'],
-    nextSteps: ['Attempt harder difficulty questions', 'Focus on weaker topics'],
-  }),
+  generateSessionSummary: (session) => {
+    const overall = session.scores?.overall || 0;
+    const trend = overall >= 70 ? 'You are making good progress!' : overall >= 50 ? 'Keep practicing to improve.' : 'Focus on fundamentals to build strength.';
+    return {
+      overallFeedback: `You completed the session with a score of ${overall}%. ${trend} Your performance across questions shows your growing capability in problem-solving.`,
+      strengths: overall >= 70 
+        ? ['Completed all questions', 'Strong problem-solving approach', 'Consistent performance']
+        : ['Completed all questions', 'Good problem-solving approach'],
+      weaknesses: overall < 60 ? ['Time management', 'Edge case handling'] : ['Minor optimization opportunities'],
+      recommendations: overall < 60
+        ? ['Practice timed coding exercises', 'Review data structure fundamentals', 'Focus on edge cases']
+        : ['Practice harder difficulty questions', 'Optimize for performance'],
+      nextSteps: overall >= 80
+        ? ['Attempt harder difficulty questions', 'Focus on system design']
+        : overall >= 50
+        ? ['Increase difficulty level', 'Review weak topics']
+        : ['Consolidate fundamentals', 'Practice easier problems'],
+    };
+  },
 };
 
 // ------------------------------------------------------------------
@@ -245,9 +280,13 @@ const callLLM = async (prompt, maxTokens = 1000) => {
 /**
  * Evaluate a student's answer (code + explanation).
  */
-const evaluateAnswer = async ({ question, code, language, explanation }) => {
+const evaluateAnswer = async ({ question, code, language, explanation, testResults = [] }) => {
   let codeEval = { codeCorrectness: 0, codeQuality: 0, feedback: '', strengths: [], improvements: [] };
   let explEval = { explanationClarity: 0, reasoningDepth: 0, structuredThinking: 0 };
+
+  const totalTests = Array.isArray(testResults) ? testResults.length : 0;
+  const passedTests = totalTests > 0 ? testResults.filter((result) => result.passed).length : 0;
+  const testPassRate = totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0;
 
   // Evaluate code if present
   if (code && code.trim()) {
@@ -277,15 +316,34 @@ const evaluateAnswer = async ({ question, code, language, explanation }) => {
 
   let overallScore;
   if (hasCode && hasExplanation) {
-    overallScore = Math.round(
-      codeEval.codeCorrectness * 0.35 +
-      codeEval.codeQuality * 0.15 +
-      explEval.explanationClarity * 0.2 +
-      explEval.reasoningDepth * 0.15 +
-      explEval.structuredThinking * 0.15
-    );
+    if (totalTests > 0) {
+      overallScore = Math.round(
+        testPassRate * 0.45 +
+        codeEval.codeCorrectness * 0.2 +
+        codeEval.codeQuality * 0.1 +
+        explEval.explanationClarity * 0.1 +
+        explEval.reasoningDepth * 0.075 +
+        explEval.structuredThinking * 0.075
+      );
+    } else {
+      overallScore = Math.round(
+        codeEval.codeCorrectness * 0.35 +
+        codeEval.codeQuality * 0.15 +
+        explEval.explanationClarity * 0.2 +
+        explEval.reasoningDepth * 0.15 +
+        explEval.structuredThinking * 0.15
+      );
+    }
   } else if (hasCode) {
-    overallScore = Math.round(codeEval.codeCorrectness * 0.6 + codeEval.codeQuality * 0.4);
+    if (totalTests > 0) {
+      overallScore = Math.round(
+        testPassRate * 0.6 +
+        codeEval.codeCorrectness * 0.25 +
+        codeEval.codeQuality * 0.15
+      );
+    } else {
+      overallScore = Math.round(codeEval.codeCorrectness * 0.6 + codeEval.codeQuality * 0.4);
+    }
   } else if (hasExplanation) {
     overallScore = Math.round(
       explEval.explanationClarity * 0.4 +
@@ -296,16 +354,38 @@ const evaluateAnswer = async ({ question, code, language, explanation }) => {
     overallScore = 0;
   }
 
+  if (hasCode && totalTests > 0 && testPassRate < 50) {
+    overallScore = Math.min(overallScore, 40);
+  }
+
+  // Ensure overallScore is within valid range (0-100)
+  const finalScore = Math.max(0, Math.min(100, overallScore));
+
+  // Combine feedback with proper fallback
+  const combinedFeedback = (() => {
+    const parts = [];
+    if (codeEval.feedback) parts.push(codeEval.feedback);
+    if (explEval.feedback) parts.push(explEval.feedback);
+    return parts.join(' ') || 'Good attempt. Keep practicing!';
+  })();
+
+  // Combine and deduplicate strengths/improvements
+  const allStrengths = [...(codeEval.strengths || []), ...(explEval.strengths || [])];
+  const allImprovements = [...(codeEval.improvements || []), ...(explEval.improvements || [])];
+  const uniqueStrengths = [...new Set(allStrengths)];
+  const uniqueImprovements = [...new Set(allImprovements)];
+
   return {
-    codeCorrectness: codeEval.codeCorrectness || 0,
-    codeQuality: codeEval.codeQuality || 0,
-    explanationClarity: explEval.explanationClarity || 0,
-    reasoningDepth: explEval.reasoningDepth || 0,
-    structuredThinking: explEval.structuredThinking || 0,
-    overallScore,
-    feedback: codeEval.feedback || explEval.feedback || '',
-    strengths: [...(codeEval.strengths || []), ...(explEval.strengths || [])],
-    improvements: [...(codeEval.improvements || []), ...(explEval.improvements || [])],
+    codeCorrectness: Math.max(0, Math.min(100, codeEval.codeCorrectness || 0)),
+    codeQuality: Math.max(0, Math.min(100, codeEval.codeQuality || 0)),
+    testPassRate,
+    explanationClarity: Math.max(0, Math.min(100, explEval.explanationClarity || 0)),
+    reasoningDepth: Math.max(0, Math.min(100, explEval.reasoningDepth || 0)),
+    structuredThinking: Math.max(0, Math.min(100, explEval.structuredThinking || 0)),
+    overallScore: finalScore,
+    feedback: combinedFeedback,
+    strengths: uniqueStrengths.length > 0 ? uniqueStrengths : ['Attempted solution'],
+    improvements: uniqueImprovements.length > 0 ? uniqueImprovements : ['Continue practicing'],
   };
 };
 

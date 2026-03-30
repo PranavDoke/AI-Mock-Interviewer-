@@ -56,7 +56,8 @@ api.interceptors.response.use(
 
     // Show error toast for non-401 errors
     const message = error.response?.data?.message || error.message || 'Something went wrong';
-    if (error.response?.status !== 401) {
+    const isExecutionHealthCheck = originalRequest?.url?.includes('/execution/health');
+    if (error.response?.status !== 401 && !isExecutionHealthCheck) {
       toast.error(message);
     }
 

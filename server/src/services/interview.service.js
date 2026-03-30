@@ -3,6 +3,7 @@ const ApiError = require('../utils/ApiError');
 const adaptiveEngine = require('./adaptive.service');
 const aiService = require('./ai.service');
 const userService = require('./user.service');
+const executionService = require('./execution.service');
 
 /**
  * Start a new interview session.
@@ -38,6 +39,59 @@ const startSession = async (userId, sessionConfig) => {
   return { session, currentQuestion: firstQuestion };
 };
 
+const getSessionDeadline = (session) => {
+  const timeLimitMinutes = session?.config?.timeLimitMinutes || 30;
+  return new Date(session.startedAt.getTime() + timeLimitMinutes * 60 * 1000);
+};
+
+const hasSessionExpired = (session) => {
+  return Date.now() > getSessionDeadline(session).getTime();
+};
+
+const resolveQuestionStartedAt = (session) => {
+  if (!session.submissions || session.submissions.length === 0) {
+    return session.startedAt;
+  }
+  return session.submissions[session.submissions.length - 1].submittedAt || session.startedAt;
+};
+
+const normalizeTimeSpentMs = (providedTimeSpentMs, questionStartedAt) => {
+  const elapsedMs = Math.max(0, Date.now() - questionStartedAt.getTime());
+  const safeProvided = Number.isFinite(providedTimeSpentMs) ? Math.max(0, providedTimeSpentMs) : 0;
+  if (safeProvided > elapsedMs + 5000) {
+    throw new ApiError(400, 'Invalid timeSpentMs for this submission.');
+  }
+  return Math.min(safeProvided, elapsedMs);
+};
+
+const summarizeTestExecution = (testResults) => {
+  if (!Array.isArray(testResults) || testResults.length === 0) {
+    return null;
+  }
+
+  const failed = testResults.find((result) => !result.passed);
+  const totalExecutionTimeMs = testResults.reduce((sum, result) => sum + (result.executionTimeMs || 0), 0);
+  const timedOut = testResults.some((result) => result.timedOut);
+
+  if (!failed) {
+    return {
+      stdout: 'All tests passed.',
+      stderr: '',
+      exitCode: 0,
+      executionTimeMs: totalExecutionTimeMs,
+      timedOut,
+    };
+  }
+
+  return {
+    stdout: failed.actualOutput || '',
+    stderr: failed.stderr || failed.error || 'Execution failed on one or more tests.',
+    exitCode: 1,
+    executionTimeMs: totalExecutionTimeMs,
+    timedOut,
+  };
+};
+
 /**
  * Get the next question for an active session.
  */
@@ -45,6 +99,11 @@ const getNextQuestion = async (sessionId, userId) => {
   const session = await InterviewSession.findOne({ _id: sessionId, userId, status: 'active' });
   if (!session) {
     throw new ApiError(404, 'Active session not found.');
+  }
+
+  if (hasSessionExpired(session)) {
+    await completeSession(session, userId);
+    return { completed: true, session };
   }
 
   // Check if session is complete
@@ -80,29 +139,60 @@ const submitAnswer = async (sessionId, userId, answerData) => {
     throw new ApiError(404, 'Active session not found.');
   }
 
+  if (hasSessionExpired(session)) {
+    await completeSession(session, userId);
+    throw new ApiError(400, 'Session time limit exceeded. Session has been auto-completed.');
+  }
+
   const question = await Question.findById(answerData.questionId);
   if (!question) {
     throw new ApiError(404, 'Question not found.');
+  }
+
+  const questionStartedAt = resolveQuestionStartedAt(session);
+  const normalizedTimeSpentMs = normalizeTimeSpentMs(answerData.timeSpentMs, questionStartedAt);
+
+  const language = answerData.language || session.config.language;
+  let testResults = [];
+  let executionResult = null;
+
+  if (question.type === 'coding' && answerData.code?.trim() && Array.isArray(question.testCases) && question.testCases.length > 0) {
+    try {
+      testResults = await executionService.runTestCases(answerData.code, language, question.testCases);
+      executionResult = summarizeTestExecution(testResults);
+    } catch (error) {
+      testResults = [];
+      executionResult = {
+        stdout: '',
+        stderr: `Automated test execution unavailable: ${error.message}`,
+        exitCode: -1,
+        executionTimeMs: 0,
+        timedOut: false,
+      };
+    }
   }
 
   // Evaluate the answer using AI
   const evaluation = await aiService.evaluateAnswer({
     question,
     code: answerData.code,
-    language: answerData.language || session.config.language,
+    language,
     explanation: answerData.explanation,
+    testResults,
   });
 
   // Build submission record
   const submission = {
     questionId: question._id,
     code: answerData.code || '',
-    language: answerData.language || session.config.language,
+    language,
     explanation: answerData.explanation || '',
+    executionResult: executionResult || undefined,
+    testResults,
     evaluation,
-    startedAt: answerData.startedAt || new Date(),
+    startedAt: questionStartedAt,
     submittedAt: new Date(),
-    timeSpentMs: answerData.timeSpentMs || 0,
+    timeSpentMs: normalizedTimeSpentMs,
   };
 
   session.submissions.push(submission);
@@ -140,11 +230,15 @@ const submitAnswer = async (sessionId, userId, answerData) => {
     await session.save();
   }
 
+  const questionsRemaining = session.config.maxQuestions - session.submissions.length;
+
   return {
     submission,
     evaluation,
     isComplete,
-    questionsRemaining: session.config.maxQuestions - session.submissions.length,
+    questionsRemaining,
+    // Additional feedback for better UX
+    userFeedback: evaluation.overallScore >= 70 ? 'Great work! Moving to the next question.' : 'Keep practicing. Try to improve on the weaker areas.',
   };
 };
 
@@ -152,11 +246,33 @@ const submitAnswer = async (sessionId, userId, answerData) => {
  * Complete a session — calculate final scores and generate summary.
  */
 const completeSession = async (session, userId) => {
+  if (session.status === 'completed') {
+    return session;
+  }
+
   session.status = 'completed';
   session.completedAt = new Date();
 
   // Calculate session scores
   const submissions = session.submissions;
+
+  if (!submissions.length) {
+    session.scores.overall = 0;
+    session.scores.accuracy = 0;
+    session.scores.avgTimePerQuestion = 0;
+    session.scores.difficultyHandled = 0;
+    session.summary = {
+      overallFeedback: 'Session ended before any answer was submitted.',
+      strengths: [],
+      weaknesses: ['No completed submissions'],
+      recommendations: ['Start a new session and submit at least one solution.'],
+      nextSteps: ['Try a shorter interview duration to build consistency.'],
+    };
+    await session.save();
+    await userService.updateStats(userId, session.scores.overall, 0);
+    return session;
+  }
+
   const scores = submissions.map((s) => s.evaluation.overallScore);
   const totalScore = scores.reduce((a, b) => a + b, 0);
 
@@ -204,7 +320,7 @@ const completeSession = async (session, userId) => {
   await session.save();
 
   // Update user stats
-  await userService.updateStats(userId, session.scores.overall);
+  await userService.updateStats(userId, session.scores.overall, submissions.length);
 
   return session;
 };

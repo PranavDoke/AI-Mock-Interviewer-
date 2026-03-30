@@ -61,24 +61,42 @@ const calculateNextDifficulty = (session) => {
   const lastAttempt = progression[progression.length - 1];
   let nextDifficulty = lastAttempt.difficulty;
 
-  // Threshold-based adjustment
-  if (lastAttempt.score >= 70) {
+  // Enhanced threshold-based adjustment with weighted scoring
+  if (lastAttempt.score >= 80) {
+    // Excellent performance → significant difficulty increase
+    nextDifficulty += 1;
+  } else if (lastAttempt.score >= 70) {
     // Good performance → increase difficulty
     nextDifficulty += 0.5;
-  } else if (lastAttempt.score < 40) {
+  } else if (lastAttempt.score >= 50) {
+    // Average performance → keep difficulty stable
+    nextDifficulty += 0;
+  } else if (lastAttempt.score >= 30) {
     // Poor performance → decrease difficulty
     nextDifficulty -= 0.5;
+  } else {
+    // Very poor performance → significant decrease
+    nextDifficulty -= 1;
   }
 
-  // Consider recent trend (last 3 attempts)
+  // Consider recent trend (last 3 attempts) with heavier weight
   if (progression.length >= 3) {
     const recentScores = progression.slice(-3).map((p) => p.score);
     const avgRecent = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+    const trend = recentScores.length > 1 ? recentScores[recentScores.length - 1] - recentScores[0] : 0;
 
-    if (avgRecent >= 80) {
-      nextDifficulty += 0.3; // Strong trend → bigger jump
-    } else if (avgRecent < 30) {
-      nextDifficulty -= 0.3; // Struggling → bigger drop
+    if (avgRecent >= 85) {
+      // Very strong trend → bigger difficulty jump
+      nextDifficulty += 0.5;
+    } else if (avgRecent >= 70 && trend > 0) {
+      // Positive trend at good level → increase
+      nextDifficulty += 0.25;
+    } else if (avgRecent < 35) {
+      // Struggling significantly → bigger drop
+      nextDifficulty -= 0.5;
+    } else if (avgRecent < 50 && trend < 0) {
+      // Negative trend at low level → decrease
+      nextDifficulty -= 0.25;
     }
   }
 

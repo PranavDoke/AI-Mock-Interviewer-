@@ -1,6 +1,25 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { interviewAPI, executionAPI } from '../services/endpoints';
 
+const DEFAULT_STARTER_CODE = {
+  java:
+    'import java.io.*;\n\npublic class Solution {\n  public static void main(String[] args) throws Exception {\n    String input = new String(System.in.readAllBytes()).trim();\n    // TODO: parse input, solve, and print the result using System.out.println(...)\n  }\n}\n',
+};
+
+const resolveStarterCode = ({ starterCode, language }) => {
+  const lang = language || 'javascript';
+  const codeForLang = starterCode?.[lang];
+  if (codeForLang && codeForLang.trim()) {
+    return codeForLang;
+  }
+
+  if (lang === 'java') {
+    return DEFAULT_STARTER_CODE.java;
+  }
+
+  return starterCode?.javascript || '';
+};
+
 export const startSession = createAsyncThunk(
   'interview/startSession',
   async (config, { rejectWithValue }) => {
@@ -77,6 +96,7 @@ const interviewSlice = createSlice({
     code: '',
     explanation: '',
     executionResult: null,
+    testResults: [],
     evaluation: null,
     isLoading: false,
     isExecuting: false,
@@ -102,6 +122,7 @@ const interviewSlice = createSlice({
       state.code = '';
       state.explanation = '';
       state.executionResult = null;
+      state.testResults = [];
       state.evaluation = null;
       state.isComplete = false;
       state.questionsRemaining = 0;
@@ -111,6 +132,7 @@ const interviewSlice = createSlice({
     clearEvaluation: (state) => {
       state.evaluation = null;
       state.executionResult = null;
+      state.testResults = [];
     },
   },
   extraReducers: (builder) => {
@@ -125,10 +147,10 @@ const interviewSlice = createSlice({
         state.session = action.payload.session;
         state.currentQuestion = action.payload.currentQuestion;
         const lang = action.payload.session?.config?.language || 'javascript';
-        state.code =
-          action.payload.currentQuestion?.starterCode?.[lang] ||
-          action.payload.currentQuestion?.starterCode?.javascript ||
-          '';
+        state.code = resolveStarterCode({
+          starterCode: action.payload.currentQuestion?.starterCode,
+          language: lang,
+        });
         state.isComplete = false;
         state.questionsRemaining = (action.payload.session?.config?.maxQuestions || 5) - 1;
       })
@@ -149,10 +171,10 @@ const interviewSlice = createSlice({
           const lang = state.session?.config?.language || 'javascript';
           const maxQ = state.session?.config?.maxQuestions || 5;
           state.currentQuestion = action.payload.question;
-          state.code =
-            action.payload.question?.starterCode?.[lang] ||
-            action.payload.question?.starterCode?.javascript ||
-            '';
+          state.code = resolveStarterCode({
+            starterCode: action.payload.question?.starterCode,
+            language: lang,
+          });
           state.questionsRemaining = maxQ - ((action.payload.questionIndex || 0) + 1);
           state.explanation = '';
           state.evaluation = null;
@@ -171,6 +193,8 @@ const interviewSlice = createSlice({
       .addCase(submitAnswer.fulfilled, (state, action) => {
         state.isSubmitting = false;
         state.evaluation = action.payload.evaluation;
+        state.executionResult = action.payload.submission?.executionResult || state.executionResult;
+        state.testResults = action.payload.submission?.testResults || [];
         state.isComplete = action.payload.isComplete;
         state.questionsRemaining = action.payload.questionsRemaining;
       })
@@ -190,6 +214,13 @@ const interviewSlice = createSlice({
       .addCase(executeCode.rejected, (state, action) => {
         state.isExecuting = false;
         state.error = action.payload;
+        state.executionResult = {
+          stdout: '',
+          stderr: action.payload || 'Failed to execute code',
+          exitCode: -1,
+          executionTimeMs: null,
+          timedOut: false,
+        };
       })
       // Abandon session
       .addCase(abandonSession.fulfilled, (state) => {

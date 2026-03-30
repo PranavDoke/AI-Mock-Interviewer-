@@ -81,30 +81,33 @@ const updateSkillProfile = async (userId, topic, score, timeSpentMs) => {
 /**
  * Update user interview stats.
  */
-const updateStats = async (userId, sessionScore) => {
+const updateStats = async (userId, sessionScore, questionsAnswered = 0) => {
   const user = await User.findById(userId);
   if (!user) return;
 
+  const previousLastInterviewAt = user.stats.lastInterviewAt;
+  const now = new Date();
+
   user.stats.totalInterviews += 1;
+  user.stats.totalQuestions += Math.max(0, questionsAnswered || 0);
   user.stats.avgScore = Math.round(
     (user.stats.avgScore * (user.stats.totalInterviews - 1) + sessionScore) /
       user.stats.totalInterviews
   );
-  user.stats.lastInterviewAt = new Date();
 
   // Streak tracking
-  const now = new Date();
-  const lastInterview = user.stats.lastInterviewAt;
-  if (lastInterview) {
-    const daysDiff = Math.floor((now - lastInterview) / (1000 * 60 * 60 * 24));
-    if (daysDiff <= 1) {
+  if (previousLastInterviewAt) {
+    const daysDiff = Math.floor((now - previousLastInterviewAt) / (1000 * 60 * 60 * 24));
+    if (daysDiff === 1) {
       user.stats.streak += 1;
-    } else {
+    } else if (daysDiff > 1) {
       user.stats.streak = 1;
     }
   } else {
     user.stats.streak = 1;
   }
+
+  user.stats.lastInterviewAt = now;
   user.stats.longestStreak = Math.max(user.stats.longestStreak, user.stats.streak);
 
   await user.save();

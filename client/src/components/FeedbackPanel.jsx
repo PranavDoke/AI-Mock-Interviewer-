@@ -69,6 +69,9 @@ const FeedbackPanel = ({ evaluation }) => {
           {evaluation.codeQuality !== undefined && (
             <ScoreBar label="Code Quality" score={evaluation.codeQuality} />
           )}
+          {evaluation.testPassRate !== undefined && (
+            <ScoreBar label="Test Pass Rate" score={evaluation.testPassRate} />
+          )}
           {!!evaluation.explanationClarity && (
             <ScoreBar label="Explanation Clarity" score={evaluation.explanationClarity} />
           )}

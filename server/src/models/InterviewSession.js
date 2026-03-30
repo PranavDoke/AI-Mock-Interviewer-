@@ -23,6 +23,10 @@ const submissionSchema = new mongoose.Schema({
     executionTimeMs: Number,
     memoryUsedKb: Number,
     timedOut: { type: Boolean, default: false },
+    signal: String,
+    compileOutput: String,
+    language: String,
+    version: String,
   },
   // Test case results
   testResults: [
@@ -32,12 +36,16 @@ const submissionSchema = new mongoose.Schema({
       actualOutput: String,
       passed: Boolean,
       executionTimeMs: Number,
+      stderr: String,
+      timedOut: { type: Boolean, default: false },
+      error: String,
     },
   ],
   // AI evaluation scores
   evaluation: {
     codeCorrectness: { type: Number, min: 0, max: 100, default: 0 },
     codeQuality: { type: Number, min: 0, max: 100, default: 0 },
+      testPassRate: { type: Number, min: 0, max: 100, default: 0 },
     explanationClarity: { type: Number, min: 0, max: 100, default: 0 },
     reasoningDepth: { type: Number, min: 0, max: 100, default: 0 },
     structuredThinking: { type: Number, min: 0, max: 100, default: 0 },
@@ -128,6 +136,7 @@ const interviewSessionSchema = new mongoose.Schema(
 // Indexes
 interviewSessionSchema.index({ userId: 1, createdAt: -1 });
 interviewSessionSchema.index({ userId: 1, status: 1 });
+interviewSessionSchema.index({ userId: 1, status: 1, completedAt: -1 });
 
 // Virtual for duration
 interviewSessionSchema.virtual('durationMs').get(function () {

@@ -71,13 +71,46 @@ const generateAndSaveQuestion = async (topic, difficulty, type = 'coding') => {
  */
 const seedQuestions = async () => {
   const count = await Question.countDocuments();
-  if (count > 0) return { seeded: false, count };
+  if (count > 0) {
+    const upgraded = await upgradeSeedStarterCode();
+    return { seeded: false, count, upgraded };
+  }
 
   const seedData = getSeedQuestions();
 
   const questions = await Question.insertMany(seedData);
   return { seeded: true, count: questions.length };
 };
+
+const upgradeSeedStarterCode = async () => {
+  const patches = getSeedStarterCodePatches();
+  let updated = 0;
+
+  for (const patch of patches) {
+    const filter = {
+      title: patch.title,
+      $or: [{ 'starterCode.java': { $exists: false } }, { 'starterCode.java': '' }],
+    };
+
+    const result = await Question.updateOne(filter, {
+      $set: { 'starterCode.java': patch.java },
+    });
+
+    if (result.modifiedCount > 0) {
+      updated += 1;
+    }
+  }
+
+  return { updated, total: patches.length };
+};
+
+function getSeedStarterCodePatches() {
+  const seeds = getSeedQuestions();
+  return seeds
+    .filter((q) => q.type === 'coding')
+    .map((q) => ({ title: q.title, java: q.starterCode?.java }))
+    .filter((p) => !!p.java);
+}
 
 /**
  * Pre-built seed questions for initial database population.
@@ -94,6 +127,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function twoSum(nums, target) {\n  // Your code here\n}',
         python: 'def two_sum(nums, target):\n    # Your code here\n    pass',
+        java:
+          'import java.io.*;\nimport java.util.*;\n\npublic class Solution {\n  public int[] twoSum(int[] nums, int target) {\n    // Your code here\n    return new int[] {0, 0};\n  }\n\n  public static void main(String[] args) throws Exception {\n    String raw = new String(System.in.readAllBytes()).trim();\n    String[] lines = raw.split("\\\\R", -1);\n\n    int[] nums = parseIntArray(lines.length > 0 ? lines[0] : "");\n    int target = (lines.length > 1 && !lines[1].trim().isEmpty()) ? Integer.parseInt(lines[1].trim()) : 0;\n\n    int[] ans = new Solution().twoSum(nums, target);\n    if (ans == null || ans.length < 2) {\n      System.out.print("[]");\n      return;\n    }\n    System.out.print("[" + ans[0] + "," + ans[1] + "]");\n  }\n\n  private static int[] parseIntArray(String s) {\n    s = (s == null ? "" : s).trim();\n    if (s.isEmpty()) return new int[0];\n\n    if (s.startsWith("[") && s.endsWith("]")) {\n      s = s.substring(1, s.length() - 1).trim();\n      if (s.isEmpty()) return new int[0];\n      String[] parts = s.split(",");\n      int[] out = new int[parts.length];\n      for (int i = 0; i < parts.length; i++) out[i] = Integer.parseInt(parts[i].trim());\n      return out;\n    }\n\n    String[] parts = s.split("\\\\s+");\n    int[] out = new int[parts.length];\n    for (int i = 0; i < parts.length; i++) out[i] = Integer.parseInt(parts[i].trim());\n    return out;\n  }\n}\n',
       },
       testCases: [
         { input: '[2,7,11,15]\n9', expectedOutput: '[0,1]', isHidden: false, explanation: '2 + 7 = 9' },
@@ -119,6 +154,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function maxSubArray(nums) {\n  // Your code here\n}',
         python: 'def max_sub_array(nums):\n    # Your code here\n    pass',
+        java:
+          'import java.io.*;\nimport java.util.*;\n\npublic class Solution {\n  public int maxSubArray(int[] nums) {\n    // Your code here\n    return 0;\n  }\n\n  public static void main(String[] args) throws Exception {\n    String input = new String(System.in.readAllBytes()).trim();\n    int[] nums = parseIntArray(input);\n    int ans = new Solution().maxSubArray(nums);\n    System.out.print(ans);\n  }\n\n  private static int[] parseIntArray(String s) {\n    s = (s == null ? "" : s).trim();\n    if (s.isEmpty()) return new int[0];\n\n    if (s.startsWith("[") && s.endsWith("]")) {\n      s = s.substring(1, s.length() - 1).trim();\n      if (s.isEmpty()) return new int[0];\n      String[] parts = s.split(",");\n      int[] out = new int[parts.length];\n      for (int i = 0; i < parts.length; i++) out[i] = Integer.parseInt(parts[i].trim());\n      return out;\n    }\n\n    String[] parts = s.split("\\\\s+");\n    int[] out = new int[parts.length];\n    for (int i = 0; i < parts.length; i++) out[i] = Integer.parseInt(parts[i].trim());\n    return out;\n  }\n}\n',
       },
       testCases: [
         { input: '[-2,1,-3,4,-1,2,1,-5,4]', expectedOutput: '6', isHidden: false },
@@ -144,6 +181,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function isPalindrome(s) {\n  // Your code here\n}',
         python: 'def is_palindrome(s):\n    # Your code here\n    pass',
+        java:
+          'import java.io.*;\n\npublic class Solution {\n  public boolean isPalindrome(String s) {\n    // Your code here\n    return true;\n  }\n\n  public static void main(String[] args) throws Exception {\n    String input = new String(System.in.readAllBytes());\n    String s = (input == null) ? "" : input.trim();\n    boolean ans = new Solution().isPalindrome(s);\n    System.out.print(ans ? "true" : "false");\n  }\n}\n',
       },
       testCases: [
         { input: 'A man, a plan, a canal: Panama', expectedOutput: 'true', isHidden: false },
@@ -168,6 +207,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function levelOrder(root) {\n  // Your code here\n}',
         python: 'def level_order(root):\n    # Your code here\n    pass',
+        java:
+          `import java.io.*;\nimport java.util.*;\n\npublic class Solution {\n  static class TreeNode {\n    int val;\n    TreeNode left;\n    TreeNode right;\n    TreeNode(int v) { val = v; }\n  }\n\n  public List<List<Integer>> levelOrder(TreeNode root) {\n    // Your code here\n    return new ArrayList<>();\n  }\n\n  public static void main(String[] args) throws Exception {\n    String input = new String(System.in.readAllBytes()).trim();\n    TreeNode root = parseTree(input);\n    List<List<Integer>> out = new Solution().levelOrder(root);\n    System.out.print(toJson2D(out));\n  }\n\n  private static TreeNode parseTree(String s) {\n    s = (s == null ? "" : s).trim();\n    if (s.isEmpty() || s.equals("[]")) return null;\n    if (s.startsWith("[") && s.endsWith("]")) s = s.substring(1, s.length() - 1);\n    String[] parts = s.split(",");\n    List<String> vals = new ArrayList<>();\n    for (String p : parts) vals.add(p.trim());\n    if (vals.isEmpty() || vals.get(0).equalsIgnoreCase("null") || vals.get(0).isEmpty()) return null;\n\n    TreeNode root = new TreeNode(Integer.parseInt(vals.get(0)));\n    Queue<TreeNode> q = new ArrayDeque<>();\n    q.add(root);\n    int i = 1;\n    while (!q.isEmpty() && i < vals.size()) {\n      TreeNode cur = q.poll();\n      if (i < vals.size()) {\n        String left = vals.get(i++);\n        if (!left.equalsIgnoreCase("null") && !left.isEmpty()) {\n          cur.left = new TreeNode(Integer.parseInt(left));\n          q.add(cur.left);\n        }\n      }\n      if (i < vals.size()) {\n        String right = vals.get(i++);\n        if (!right.equalsIgnoreCase("null") && !right.isEmpty()) {\n          cur.right = new TreeNode(Integer.parseInt(right));\n          q.add(cur.right);\n        }\n      }\n    }\n    return root;\n  }\n\n  private static String toJson2D(List<List<Integer>> lists) {\n    if (lists == null) return "[]";\n    StringBuilder sb = new StringBuilder();\n    sb.append('[');\n    for (int i = 0; i < lists.size(); i++) {\n      if (i > 0) sb.append(',');\n      sb.append('[');\n      List<Integer> row = lists.get(i);\n      for (int j = 0; j < (row == null ? 0 : row.size()); j++) {\n        if (j > 0) sb.append(',');\n        sb.append(row.get(j));\n      }\n      sb.append(']');\n    }\n    sb.append(']');\n    return sb.toString();\n  }\n}\n`,
       },
       testCases: [
         { input: '[3,9,20,null,null,15,7]', expectedOutput: '[[3],[9,20],[15,7]]', isHidden: false },
@@ -192,6 +233,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function longestCommonSubsequence(text1, text2) {\n  // Your code here\n}',
         python: 'def longest_common_subsequence(text1, text2):\n    # Your code here\n    pass',
+        java:
+          'import java.io.*;\n\npublic class Solution {\n  public int longestCommonSubsequence(String text1, String text2) {\n    // Your code here\n    return 0;\n  }\n\n  public static void main(String[] args) throws Exception {\n    String raw = new String(System.in.readAllBytes()).trim();\n    String[] lines = raw.split("\\\\R", -1);\n    String text1 = lines.length > 0 ? lines[0] : "";\n    String text2 = lines.length > 1 ? lines[1] : "";\n    int ans = new Solution().longestCommonSubsequence(text1, text2);\n    System.out.print(ans);\n  }\n}\n',
       },
       testCases: [
         { input: 'abcde\nace', expectedOutput: '3', isHidden: false },
@@ -216,6 +259,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function sortArray(nums) {\n  // Your code here\n}',
         python: 'def sort_array(nums):\n    # Your code here\n    pass',
+        java:
+          `import java.io.*;\n\npublic class Solution {\n  public int[] sortArray(int[] nums) {\n    // Your code here\n    return nums;\n  }\n\n  public static void main(String[] args) throws Exception {\n    String input = new String(System.in.readAllBytes()).trim();\n    int[] nums = parseIntArray(input);\n    int[] out = new Solution().sortArray(nums);\n    System.out.print(toJson(out));\n  }\n\n  private static int[] parseIntArray(String s) {\n    s = (s == null ? "" : s).trim();\n    if (s.isEmpty()) return new int[0];\n\n    if (s.startsWith("[") && s.endsWith("]")) {\n      s = s.substring(1, s.length() - 1).trim();\n      if (s.isEmpty()) return new int[0];\n      String[] parts = s.split(",");\n      int[] out = new int[parts.length];\n      for (int i = 0; i < parts.length; i++) out[i] = Integer.parseInt(parts[i].trim());\n      return out;\n    }\n\n    String[] parts = s.split("\\\\s+");\n    int[] out = new int[parts.length];\n    for (int i = 0; i < parts.length; i++) out[i] = Integer.parseInt(parts[i].trim());\n    return out;\n  }\n\n  private static String toJson(int[] a) {\n    if (a == null) return "[]";\n    StringBuilder sb = new StringBuilder();\n    sb.append('[');\n    for (int i = 0; i < a.length; i++) {\n      if (i > 0) sb.append(',');\n      sb.append(a[i]);\n    }\n    sb.append(']');\n    return sb.toString();\n  }\n}\n`,
       },
       testCases: [
         { input: '[5,2,3,1]', expectedOutput: '[1,2,3,5]', isHidden: false },
@@ -239,6 +284,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function numIslands(grid) {\n  // Your code here\n}',
         python: 'def num_islands(grid):\n    # Your code here\n    pass',
+        java:
+          `import java.io.*;\nimport java.util.*;\n\npublic class Solution {\n  public int numIslands(char[][] grid) {\n    // Your code here\n    return 0;\n  }\n\n  public static void main(String[] args) throws Exception {\n    String input = new String(System.in.readAllBytes()).trim();\n    char[][] grid = parseCharGrid(input);\n    int ans = new Solution().numIslands(grid);\n    System.out.print(ans);\n  }\n\n  private static char[][] parseCharGrid(String s) {\n    s = (s == null ? "" : s).trim();\n    if (s.isEmpty() || s.equals("[]")) return new char[0][0];\n\n    // Expected JSON-like: [["1","1"],["0","1"]]\n    List<List<Character>> rows = new ArrayList<>();\n    int i = 0;\n    while (i < s.length() && s.charAt(i) != '[') i++;\n    if (i >= s.length()) return new char[0][0];\n    i++;\n\n    while (i < s.length()) {\n      while (i < s.length() && s.charAt(i) != '[' && s.charAt(i) != ']') i++;\n      if (i >= s.length() || s.charAt(i) == ']') break;\n      i++;\n      List<Character> row = new ArrayList<>();\n      while (i < s.length() && s.charAt(i) != ']') {\n        char c = s.charAt(i);\n        if (c == '0' || c == '1') row.add(c);\n        i++;\n      }\n      rows.add(row);\n      while (i < s.length() && s.charAt(i) != '[' && s.charAt(i) != ']') i++;\n      if (i < s.length() && s.charAt(i) == ']') i++;\n    }\n\n    int m = rows.size();\n    int n = m == 0 ? 0 : rows.get(0).size();\n    char[][] grid = new char[m][n];\n    for (int r = 0; r < m; r++) {\n      for (int c = 0; c < n; c++) grid[r][c] = rows.get(r).get(c);\n    }\n    return grid;\n  }\n}\n`,
       },
       testCases: [
         { input: '[["1","1","0","0","0"],["1","1","0","0","0"],["0","0","1","0","0"],["0","0","0","1","1"]]', expectedOutput: '3', isHidden: false },
@@ -281,6 +328,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function groupAnagrams(strs) {\n  // Your code here\n}',
         python: 'def group_anagrams(strs):\n    # Your code here\n    pass',
+        java:
+          `import java.io.*;\nimport java.util.*;\n\npublic class Solution {\n  public List<List<String>> groupAnagrams(String[] strs) {\n    // Your code here\n    return new ArrayList<>();\n  }\n\n  public static void main(String[] args) throws Exception {\n    String input = new String(System.in.readAllBytes()).trim();\n    String[] strs = parseStringArray(input);\n    List<List<String>> out = new Solution().groupAnagrams(strs);\n    System.out.print(toJson2D(out));\n  }\n\n  private static String[] parseStringArray(String s) {\n    s = (s == null ? "" : s).trim();\n    if (s.isEmpty() || s.equals("[]")) return new String[0];\n    if (s.startsWith("[") && s.endsWith("]")) s = s.substring(1, s.length() - 1);\n\n    List<String> out = new ArrayList<>();\n    StringBuilder cur = new StringBuilder();\n    boolean inQuote = false;\n    for (int i = 0; i < s.length(); i++) {\n      char c = s.charAt(i);\n      if (c == '"') {\n        inQuote = !inQuote;\n        continue;\n      }\n      if (!inQuote && c == ',') {\n        out.add(cur.toString().trim());\n        cur.setLength(0);\n      } else {\n        cur.append(c);\n      }\n    }\n    if (cur.length() > 0) out.add(cur.toString().trim());\n\n    for (int i = 0; i < out.size(); i++) {\n      String v = out.get(i).trim();\n      if (v.startsWith("\"") && v.endsWith("\"")) v = v.substring(1, v.length() - 1);\n      out.set(i, v);\n    }\n\n    return out.toArray(new String[0]);\n  }\n\n  private static String toJson2D(List<List<String>> lists) {\n    if (lists == null) return "[]";\n    StringBuilder sb = new StringBuilder();\n    sb.append('[');\n    for (int i = 0; i < lists.size(); i++) {\n      if (i > 0) sb.append(',');\n      sb.append('[');\n      List<String> row = lists.get(i);\n      for (int j = 0; j < (row == null ? 0 : row.size()); j++) {\n        if (j > 0) sb.append(',');\n        sb.append('"').append(escape(row.get(j))).append('"');\n      }\n      sb.append(']');\n    }\n    sb.append(']');\n    return sb.toString();\n  }\n\n  private static String escape(String s) {\n    return (s == null ? "" : s).replace("\\\\", "\\\\\\\\").replace("\"", "\\\\\"");\n  }\n}\n`,
       },
       testCases: [
         { input: '["eat","tea","tan","ate","nat","bat"]', expectedOutput: '[["eat","tea","ate"],["tan","nat"],["bat"]]', isHidden: false },
@@ -305,6 +354,8 @@ function getSeedQuestions() {
       starterCode: {
         javascript: 'function generateParenthesis(n) {\n  // Your code here\n}',
         python: 'def generate_parenthesis(n):\n    # Your code here\n    pass',
+        java:
+          `import java.io.*;\nimport java.util.*;\n\npublic class Solution {\n  public List<String> generateParenthesis(int n) {\n    // Your code here\n    return new ArrayList<>();\n  }\n\n  public static void main(String[] args) throws Exception {\n    String input = new String(System.in.readAllBytes()).trim();\n    int n = input.isEmpty() ? 0 : Integer.parseInt(input);\n    List<String> out = new Solution().generateParenthesis(n);\n    System.out.print(toJson(out));\n  }\n\n  private static String toJson(List<String> list) {\n    if (list == null) return "[]";\n    StringBuilder sb = new StringBuilder();\n    sb.append('[');\n    for (int i = 0; i < list.size(); i++) {\n      if (i > 0) sb.append(',');\n      sb.append('"').append(escape(list.get(i))).append('"');\n    }\n    sb.append(']');\n    return sb.toString();\n  }\n\n  private static String escape(String s) {\n    return (s == null ? "" : s).replace("\\\\", "\\\\\\\\").replace("\"", "\\\\\"");\n  }\n}\n`,
       },
       testCases: [
         { input: '3', expectedOutput: '["((()))","(()())","(())()","()(())","()()()"]', isHidden: false },

@@ -5,7 +5,8 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci
+RUN npm install --include=optional
+RUN npm install @tailwindcss/oxide-linux-x64-musl --no-save
 
 COPY . .
 

@@ -286,7 +286,7 @@ const AnalyticsPage = () => {
                 <div
                   key={idx}
                   className={`w-3 h-3 rounded-sm ${bg}`}
-                  title={`${day._id || ''}: ${count} sessions`}
+                  title={`${day.date || day._id || ''}: ${count} sessions`}
                 />
               );
             })}

@@ -37,7 +37,7 @@ const HistoryPage = () => {
 
   const statusColors = {
     completed: 'bg-green-900 text-green-300',
-    'in-progress': 'bg-blue-900 text-blue-300',
+    active: 'bg-blue-900 text-blue-300',
     abandoned: 'bg-red-900 text-red-300',
   };
 
@@ -60,7 +60,7 @@ const HistoryPage = () => {
           >
             <option value="">All Status</option>
             <option value="completed">Completed</option>
-            <option value="in-progress">In Progress</option>
+            <option value="active">Active</option>
             <option value="abandoned">Abandoned</option>
           </select>
         </div>

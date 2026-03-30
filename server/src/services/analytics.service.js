@@ -80,10 +80,12 @@ const getOverallStats = async (userId, dateFilter) => {
   if (result.length === 0) {
     return {
       totalSessions: 0,
+      completedSessions: 0,
       avgScore: 0,
       avgAccuracy: 0,
       totalQuestions: 0,
       avgTimePerQuestion: 0,
+      avgDuration: 0,
       maxDifficulty: 0,
       totalTimeHours: 0,
     };
@@ -92,10 +94,14 @@ const getOverallStats = async (userId, dateFilter) => {
   const stats = result[0];
   return {
     totalSessions: stats.totalSessions,
+    completedSessions: stats.totalSessions,
     avgScore: Math.round(stats.avgScore || 0),
     avgAccuracy: Math.round(stats.avgAccuracy || 0),
     totalQuestions: stats.totalQuestions,
     avgTimePerQuestion: Math.round(stats.avgTimePerQuestion || 0),
+    avgDuration: stats.totalSessions > 0
+      ? Math.round(((stats.totalTimeMs || 0) / stats.totalSessions) / 60000)
+      : 0,
     maxDifficulty: stats.maxDifficulty || 0,
     totalTimeHours: Math.round((stats.totalTimeMs || 0) / 3600000 * 10) / 10,
   };
@@ -301,6 +307,10 @@ const getTopicAnalytics = async (userId, topic, period = '30d') => {
     topic,
     avgScore: Math.round(data.avgScore || 0),
     totalAttempts: data.count,
+    avgDifficulty: data.difficulties.length > 0
+      ? Math.round((data.difficulties.reduce((sum, diff) => sum + (diff || 0), 0) / data.difficulties.length) * 10) / 10
+      : 0,
+    bestScore: data.scores.length > 0 ? Math.max(...data.scores.map((score) => Math.round(score || 0))) : 0,
     progression: data.scores.map((score, i) => ({
       score: Math.round(score),
       difficulty: data.difficulties[i],
