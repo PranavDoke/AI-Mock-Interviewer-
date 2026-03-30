@@ -22,7 +22,14 @@ const renderWithProviders = (ui, { preloadedState = {}, ...options } = {}) => {
   const store = createTestStore(preloadedState);
   const Wrapper = ({ children }) => (
     <Provider store={store}>
-      <BrowserRouter>{children}</BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
+        {children}
+      </BrowserRouter>
     </Provider>
   );
   return render(ui, { wrapper: Wrapper, ...options });
