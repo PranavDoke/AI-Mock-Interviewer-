@@ -1,4 +1,4 @@
-# AI Mock Interviewer - Complete Project Analysis & Improvements
+﻿# AI Mock Interviewer - Complete Project Analysis & Improvements
 
 ## 1. Project Overview
 
