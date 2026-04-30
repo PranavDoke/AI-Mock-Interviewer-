@@ -45,3 +45,5 @@ Example payload:
 ```
 
 If no `model.joblib` exists, the service returns a deterministic fallback score.
+
+Recommendation: For better, more consistent feedback and improved score prediction, train the model by running `python train_model.py` before running the service. When the model is present, the backend will combine deterministic scores with the ML prediction and include `mlUsed` and `mlPrediction` fields in evaluation results so you can see when the model influenced feedback.

@@ -276,15 +276,16 @@ const evaluateAnswer = async ({ question, code, language, explanation }) => {
       const { overallScore: detScore, components } = computeScore(features);
 
       // Attempt ML prediction (optional)
-      let mlPred = null;
+      let mlResult = { predictedScore: null, usedModel: false };
       try {
-        mlPred = await predictScore(features);
+        mlResult = await predictScore(features);
       } catch (e) {
-        mlPred = null;
+        mlResult = { predictedScore: null, usedModel: false };
       }
 
       // Combine scores: if ML available, average with deterministic (weighted)
-      const overallScore = mlPred !== null ? Math.round((detScore * 0.6) + (Number(mlPred) * 0.4)) : detScore;
+      const mlPred = mlResult && mlResult.predictedScore !== null ? Number(mlResult.predictedScore) : null;
+      const overallScore = mlPred !== null ? Math.round((detScore * 0.6) + (mlPred * 0.4)) : detScore;
 
       const fb = generateFeedback({ features, score: overallScore });
 
@@ -296,6 +297,8 @@ const evaluateAnswer = async ({ question, code, language, explanation }) => {
         improvements: fb.weaknesses,
         features,
         overallScore,
+        mlUsed: !!mlResult.usedModel,
+        mlPrediction: mlPred,
       };
     } catch (err) {
       logger.error(`Evaluation pipeline error: ${err.message}`);
