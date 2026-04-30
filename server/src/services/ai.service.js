@@ -1,6 +1,12 @@
 const config = require('../config/config');
 const logger = require('../config/logger');
 const ApiError = require('../utils/ApiError');
+const executionService = require('./execution.service');
+const { extractFeatures } = require('../eval/featureExtractor');
+const { computeScore } = require('../eval/scoring');
+const { generateFeedback } = require('../eval/feedbackEngine');
+const { predictScore } = require('../eval/mlClient');
+const { decideNextDifficulty } = require('../eval/adaptiveDifficulty');
 
 /**
  * AI Service — Abstract provider layer.
@@ -249,13 +255,50 @@ const evaluateAnswer = async ({ question, code, language, explanation }) => {
   let codeEval = { codeCorrectness: 0, codeQuality: 0, feedback: '', strengths: [], improvements: [] };
   let explEval = { explanationClarity: 0, reasoningDepth: 0, structuredThinking: 0 };
 
-  // Evaluate code if present
+  // Evaluate code if present — use deterministic pipeline + optional ML
   if (code && code.trim()) {
     try {
-      const prompt = PROMPTS.evaluateCode(question, code, language);
-      const result = await callLLM(prompt);
-      codeEval = result || MOCK_RESPONSES.evaluateCode();
-    } catch {
+      // If question provides test cases, run them
+      let testResults = [];
+      if (question.testCases && Array.isArray(question.testCases) && question.testCases.length) {
+        try {
+          testResults = await executionService.runTestCases(code, language, question.testCases);
+        } catch (err) {
+          // execution issues should not break evaluation pipeline
+          logger.debug(`Test execution failed: ${err.message}`);
+          testResults = [];
+        }
+      }
+
+      const features = extractFeatures({ code, language, testResults });
+
+      // Deterministic score
+      const { overallScore: detScore, components } = computeScore(features);
+
+      // Attempt ML prediction (optional)
+      let mlPred = null;
+      try {
+        mlPred = await predictScore(features);
+      } catch (e) {
+        mlPred = null;
+      }
+
+      // Combine scores: if ML available, average with deterministic (weighted)
+      const overallScore = mlPred !== null ? Math.round((detScore * 0.6) + (Number(mlPred) * 0.4)) : detScore;
+
+      const fb = generateFeedback({ features, score: overallScore });
+
+      codeEval = {
+        codeCorrectness: features.testPassRate,
+        codeQuality: components.codeQualityScore || 0,
+        feedback: fb.feedback,
+        strengths: fb.strengths,
+        improvements: fb.weaknesses,
+        features,
+        overallScore,
+      };
+    } catch (err) {
+      logger.error(`Evaluation pipeline error: ${err.message}`);
       codeEval = MOCK_RESPONSES.evaluateCode();
     }
   }
