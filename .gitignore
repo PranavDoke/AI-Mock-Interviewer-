@@ -34,3 +34,6 @@ docker/piston/data/
 
 # MongoDB Memory Server binary
 .cache/mongodb-binaries/
+
+# Server env example (contains placeholders only)
+server/.env.example
