@@ -24,10 +24,17 @@ const LANGUAGE_MAP = {
 
 // Execution limits
 const LIMITS = {
-  timeout: 3000,        // 3 seconds max execution time (Piston run_timeout limit)
-  memoryLimit: 256 * 1024 * 1024,  // 256 MB memory limit (bytes)
+  default: {
+    timeout: 3000,
+    memoryLimit: 256000,
+    compileTimeout: 10000,
+  },
+  java: {
+    timeout: 8000,
+    memoryLimit: -1,
+    compileTimeout: 10000,
+  },
   maxOutputSize: 65536, // 64 KB max output
-  compileTimeout: 10000, // 10 seconds for compilation (Piston hard limit)
 };
 
 /**
@@ -53,6 +60,7 @@ const getRuntimes = async () => {
  */
 const executeCode = async (code, language, input = '') => {
   const langConfig = LANGUAGE_MAP[language];
+  const limits = getExecutionLimits(language);
   if (!langConfig) {
     throw new ApiError(400, `Unsupported language: ${language}. Supported: ${Object.keys(LANGUAGE_MAP).join(', ')}`);
   }
@@ -77,13 +85,13 @@ const executeCode = async (code, language, input = '') => {
           },
         ],
         stdin: input,
-        run_timeout: LIMITS.timeout,
-        compile_timeout: LIMITS.compileTimeout,
-        compile_memory_limit: LIMITS.memoryLimit,
-        run_memory_limit: LIMITS.memoryLimit,
+        run_timeout: limits.timeout,
+        compile_timeout: limits.compileTimeout,
+        compile_memory_limit: limits.memoryLimit,
+        run_memory_limit: limits.memoryLimit,
       },
       {
-        timeout: LIMITS.timeout + 5000, // HTTP timeout slightly longer than execution timeout
+        timeout: limits.timeout + 5000, // HTTP timeout slightly longer than execution timeout
       }
     );
 
@@ -91,7 +99,6 @@ const executeCode = async (code, language, input = '') => {
     const executionTimeMs = Date.now() - startTime;
 
     return {
-      mode: 'stdin',
       stdout: truncateOutput(result.run?.stdout || ''),
       stderr: truncateOutput(result.run?.stderr || ''),
       exitCode: result.run?.code ?? -1,
@@ -105,11 +112,10 @@ const executeCode = async (code, language, input = '') => {
   } catch (error) {
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
       return {
-        mode: 'stdin',
         stdout: '',
         stderr: 'Execution timed out.',
         exitCode: -1,
-        executionTimeMs: LIMITS.timeout,
+        executionTimeMs: limits.timeout,
         timedOut: true,
         language,
       };
@@ -135,8 +141,7 @@ const executeCode = async (code, language, input = '') => {
 const runTestCases = async (code, language, testCases) => {
   const results = [];
 
-  for (let i = 0; i < testCases.length; i += 1) {
-    const testCase = testCases[i];
+  for (const testCase of testCases) {
     try {
       const execResult = await executeCode(code, language, testCase.input);
 
@@ -144,7 +149,6 @@ const runTestCases = async (code, language, testCases) => {
       const expectedOutput = testCase.expectedOutput.trim();
 
       results.push({
-        index: i,
         input: testCase.input,
         expectedOutput,
         actualOutput,
@@ -152,52 +156,19 @@ const runTestCases = async (code, language, testCases) => {
         executionTimeMs: execResult.executionTimeMs,
         stderr: execResult.stderr,
         timedOut: execResult.timedOut,
-        isHidden: Boolean(testCase.isHidden),
       });
     } catch (error) {
       results.push({
-        index: i,
         input: testCase.input,
         expectedOutput: testCase.expectedOutput,
         actualOutput: '',
         passed: false,
         error: error.message,
-        isHidden: Boolean(testCase.isHidden),
       });
     }
   }
 
   return results;
-};
-
-const runTestCasesWithSummary = async (code, language, testCases) => {
-  if (!testCases || testCases.length === 0) {
-    throw new ApiError(400, 'No test cases provided.');
-  }
-
-  const testCaseResults = await runTestCases(code, language, testCases);
-  const totalTests = testCaseResults.length;
-  const passedTests = testCaseResults.filter((result) => result.passed).length;
-  const failedTests = totalTests - passedTests;
-  const hiddenTests = testCaseResults.filter((result) => result.isHidden).length;
-  const executionTimeMs = testCaseResults.reduce(
-    (sum, result) => sum + (result.executionTimeMs || 0),
-    0
-  );
-
-  return {
-    mode: 'testCases',
-    language,
-    testCaseResults,
-    summary: {
-      totalTests,
-      passedTests,
-      failedTests,
-      hiddenTests,
-      passRate: totalTests > 0 ? Math.round((passedTests / totalTests) * 100) : 0,
-    },
-    executionTimeMs,
-  };
 };
 
 /**
@@ -240,10 +211,16 @@ function truncateOutput(output) {
   return output;
 }
 
+function getExecutionLimits(language) {
+  if (language === 'java') {
+    return LIMITS.java;
+  }
+  return LIMITS.default;
+}
+
 module.exports = {
   executeCode,
   runTestCases,
-  runTestCasesWithSummary,
   getRuntimes,
   healthCheck,
   LANGUAGE_MAP,

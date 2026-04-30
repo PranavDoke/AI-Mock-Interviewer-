@@ -2,7 +2,6 @@ const { InterviewSession, Question, User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const adaptiveEngine = require('./adaptive.service');
 const aiService = require('./ai.service');
-const executionService = require('./execution.service');
 const userService = require('./user.service');
 
 /**
@@ -87,23 +86,6 @@ const submitAnswer = async (sessionId, userId, answerData) => {
   }
 
   // Evaluate the answer using AI
-  let testResults = [];
-  if (question.testCases && question.testCases.length > 0 && answerData.code) {
-    const executed = await executionService.runTestCases(
-      answerData.code,
-      answerData.language || session.config.language,
-      question.testCases
-    );
-
-    testResults = executed.map((result) => ({
-      input: result.input,
-      expectedOutput: result.expectedOutput,
-      actualOutput: result.actualOutput,
-      passed: result.passed,
-      executionTimeMs: result.executionTimeMs,
-    }));
-  }
-
   const evaluation = await aiService.evaluateAnswer({
     question,
     code: answerData.code,
@@ -117,7 +99,6 @@ const submitAnswer = async (sessionId, userId, answerData) => {
     code: answerData.code || '',
     language: answerData.language || session.config.language,
     explanation: answerData.explanation || '',
-    testResults,
     evaluation,
     startedAt: answerData.startedAt || new Date(),
     submittedAt: new Date(),

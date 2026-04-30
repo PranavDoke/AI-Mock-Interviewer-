@@ -47,9 +47,9 @@ export const submitAnswer = createAsyncThunk(
 
 export const executeCode = createAsyncThunk(
   'interview/executeCode',
-  async (payload, { rejectWithValue }) => {
+  async ({ code, language, input }, { rejectWithValue }) => {
     try {
-      const { data } = await executionAPI.executeCode(payload);
+      const { data } = await executionAPI.executeCode({ code, language, input });
       return data.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to execute code');

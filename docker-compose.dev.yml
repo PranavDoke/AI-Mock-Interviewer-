@@ -28,6 +28,11 @@ services:
     image: ghcr.io/engineer-man/piston
     container_name: ai-interview-piston-dev
     restart: unless-stopped
+    environment:
+      PISTON_RUN_TIMEOUT: 10000
+      PISTON_RUN_CPU_TIME: 10000
+      PISTON_LIMIT_OVERRIDES: '{"java":{"run_timeout":10000,"run_cpu_time":10000}}'
+      JAVA_TOOL_OPTIONS: "-Xms32m -Xmx256m"
     ports:
       - '2000:2000'
     tmpfs:

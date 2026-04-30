@@ -6,7 +6,6 @@ const aiService = require('./ai.service');
 const executionService = require('./execution.service');
 const analyticsService = require('./analytics.service');
 const questionService = require('./question.service');
-const questionMigrationService = require('./questionMigration.service');
 
 module.exports = {
   authService,
@@ -17,5 +16,4 @@ module.exports = {
   executionService,
   analyticsService,
   questionService,
-  questionMigrationService,
 };

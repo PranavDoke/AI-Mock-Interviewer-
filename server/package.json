@@ -9,9 +9,7 @@
     "test": "jest --forceExit --detectOpenHandles",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src/",
-    "migrate:questions": "node scripts/migrate-questions.js",
-    "migrate:questions:apply": "node scripts/migrate-questions.js --apply"
+    "lint": "eslint src/"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -64,17 +64,6 @@ const InterviewPage = () => {
   const [showConsole, setShowConsole] = useState(false);
   const [confirmAbandon, setConfirmAbandon] = useState(false);
 
-  const runnableTestCases = (currentQuestion?.testCases || []).filter((testCase) => {
-    const input = String(testCase?.input || '').trim().toLowerCase();
-    const expected = String(testCase?.expectedOutput || '').trim().toLowerCase();
-    const explanation = String(testCase?.explanation || '').trim();
-    if (!input || !expected) return false;
-    if (input === 'sample input' && expected === 'sample output') return false;
-    if (explanation === 'Replace this placeholder with a real test case.') return false;
-    if (explanation === 'Auto-generated fallback test case due missing source examples.') return false;
-    return true;
-  });
-
   // Redirect if no active session
   useEffect(() => {
     if (!session) {
@@ -94,31 +83,12 @@ const InterviewPage = () => {
     dispatch(
       executeCode({
         code,
-        mode: 'stdin',
         language: session?.config?.language || 'javascript',
         input: customInput || undefined,
       })
     );
     setShowConsole(true);
   }, [dispatch, code, session, customInput]);
-
-  const handleRunTests = useCallback(() => {
-    if (!code.trim() || runnableTestCases.length === 0) return;
-
-    dispatch(
-      executeCode({
-        code,
-        mode: 'testCases',
-        language: session?.config?.language || 'javascript',
-        testCases: runnableTestCases.map((testCase) => ({
-          input: testCase.input,
-          expectedOutput: testCase.expectedOutput,
-          isHidden: Boolean(testCase.isHidden),
-        })),
-      })
-    );
-    setShowConsole(true);
-  }, [dispatch, code, session, runnableTestCases]);
 
   const handleSubmit = useCallback(() => {
     if (!session || !currentQuestion) return;
@@ -221,16 +191,7 @@ const InterviewPage = () => {
               <div>
                 <h4 className="text-sm font-semibold text-gray-400 mb-2">Examples</h4>
                 {currentQuestion.testCases
-                  .filter((tc) => {
-                    if (tc.isHidden) return false;
-                    const input = String(tc.input || '').trim().toLowerCase();
-                    const expected = String(tc.expectedOutput || '').trim().toLowerCase();
-                    const explanation = String(tc.explanation || '').trim();
-                    if (input === 'sample input' && expected === 'sample output') return false;
-                    if (explanation === 'Replace this placeholder with a real test case.') return false;
-                    if (explanation === 'Auto-generated fallback test case due missing source examples.') return false;
-                    return true;
-                  })
+                  .filter((tc) => !tc.isHidden)
                   .slice(0, 3)
                   .map((tc, i) => (
                     <div
@@ -328,15 +289,7 @@ const InterviewPage = () => {
                 ) : (
                   <FiPlay className="w-4 h-4" />
                 )}
-                <span>Run Input</span>
-              </button>
-              <button
-                onClick={handleRunTests}
-                disabled={isExecuting || !code.trim() || runnableTestCases.length === 0}
-                className="flex items-center space-x-1.5 bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              >
-                {isExecuting ? <LoadingSpinner size="sm" /> : <FiPlay className="w-4 h-4" />}
-                <span>Run Tests</span>
+                <span>Run</span>
               </button>
               <button
                 onClick={() => setShowConsole(!showConsole)}
@@ -364,72 +317,18 @@ const InterviewPage = () => {
           {showConsole && (
             <div className="h-48 bg-gray-900 border-t border-gray-800 flex flex-col">
               <div className="flex items-center justify-between px-4 py-1.5 bg-gray-800 border-b border-gray-700">
-                <span className="text-xs text-gray-400 font-medium">
-                  {executionResult?.mode === 'testCases' ? 'Test Results' : 'Console Output'}
-                </span>
+                <span className="text-xs text-gray-400 font-medium">Console Output</span>
                 {executionResult && (
                   <span
                     className={`text-xs ${
-                      executionResult.mode === 'testCases'
-                        ? (executionResult.summary?.failedTests ? 'text-yellow-400' : 'text-green-400')
-                        : ((executionResult.stderr || executionResult.exitCode !== 0) ? 'text-red-400' : 'text-green-400')
+                      (executionResult.stderr || executionResult.exitCode !== 0) ? 'text-red-400' : 'text-green-400'
                     }`}
                   >
-                    {executionResult.mode === 'testCases'
-                      ? `${executionResult.summary?.passedTests || 0}/${executionResult.summary?.totalTests || 0} passed`
-                      : ((executionResult.stderr || executionResult.exitCode !== 0) ? 'Error' : 'Success')}
+                    {(executionResult.stderr || executionResult.exitCode !== 0) ? 'Error' : 'Success'}
                   </span>
                 )}
               </div>
-              {executionResult?.mode === 'testCases' ? (
-                <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                  {isExecuting ? (
-                    <div className="flex items-center space-x-2 text-gray-400 text-sm">
-                      <LoadingSpinner size="sm" />
-                      <span>Running tests...</span>
-                    </div>
-                  ) : executionResult?.testCaseResults?.length ? (
-                    executionResult.testCaseResults.map((result, index) => (
-                      <div
-                        key={`${index}-${result.input}`}
-                        className={`rounded-lg border px-3 py-2 text-xs font-mono ${
-                          result.passed
-                            ? 'border-green-700 bg-green-900/20 text-green-200'
-                            : 'border-red-700 bg-red-900/20 text-red-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span>
-                            Test #{index + 1} {result.isHidden ? '(hidden)' : '(visible)'}
-                          </span>
-                          <span>{result.passed ? 'PASS' : 'FAIL'}</span>
-                        </div>
-                        <div className="text-gray-300">
-                          <span className="text-gray-500">Input: </span>
-                          {result.input}
-                        </div>
-                        <div className="text-gray-300">
-                          <span className="text-gray-500">Expected: </span>
-                          {result.expectedOutput}
-                        </div>
-                        <div className="text-gray-300">
-                          <span className="text-gray-500">Actual: </span>
-                          {result.actualOutput}
-                        </div>
-                        {result.stderr && (
-                          <div className="text-red-300 mt-1">
-                            <span className="text-red-400">Error: </span>
-                            {result.stderr}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-gray-600 text-sm">Run tests to see per-case output here</p>
-                  )}
-                </div>
-              ) : (
-                <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 flex overflow-hidden">
                 {/* Custom Input */}
                 <div className="w-1/3 border-r border-gray-700 flex flex-col">
                   <span className="text-xs text-gray-500 px-3 py-1">Custom Input</span>
@@ -459,8 +358,7 @@ const InterviewPage = () => {
                     <p className="text-gray-600 text-sm">Run your code to see output here</p>
                   )}
                 </div>
-                </div>
-              )}
+              </div>
             </div>
           )}
         </div>

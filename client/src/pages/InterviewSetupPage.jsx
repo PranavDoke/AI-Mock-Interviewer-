@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { startSession } from '../store/interviewSlice';
+import { abandonSession, startSession } from '../store/interviewSlice';
 import { interviewAPI } from '../services/endpoints';
-import toast from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { FiPlay, FiCode, FiHash, FiClock, FiSliders } from 'react-icons/fi';
+import { FiPlay, FiCode, FiHash, FiClock, FiSliders, FiAlertTriangle, FiTrash2 } from 'react-icons/fi';
 
 const LANGUAGES = [
   { id: 'javascript', label: 'JavaScript', icon: 'JS' },
@@ -30,9 +29,9 @@ const InterviewSetupPage = () => {
   const navigate = useNavigate();
   const { isLoading } = useSelector((state) => state.interview);
   const { user } = useSelector((state) => state.auth);
-  const [activeSession, setActiveSession] = useState(null);
-  const [isCheckingActive, setIsCheckingActive] = useState(true);
-  const [isEndingActive, setIsEndingActive] = useState(false);
+  const [existingSessionId, setExistingSessionId] = useState(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isAbandoningSession, setIsAbandoningSession] = useState(false);
 
   const [config, setConfig] = useState({
     language: user?.preferences?.preferredLanguage || 'javascript',
@@ -41,23 +40,6 @@ const InterviewSetupPage = () => {
     duration: user?.preferences?.interviewDuration || 30,
     difficulty: null, // auto
   });
-
-  useEffect(() => {
-    const fetchActiveSession = async () => {
-      setIsCheckingActive(true);
-      try {
-        const { data } = await interviewAPI.listSessions({ status: 'active', page: 1, limit: 1 });
-        const sessions = data?.data?.results || data?.data || [];
-        setActiveSession(sessions[0] || null);
-      } catch {
-        setActiveSession(null);
-      } finally {
-        setIsCheckingActive(false);
-      }
-    };
-
-    fetchActiveSession();
-  }, []);
 
   const toggleTopic = (topic) => {
     setConfig((prev) => {
@@ -68,35 +50,48 @@ const InterviewSetupPage = () => {
     });
   };
 
-  const handleStart = async () => {
-    if (activeSession?._id) {
-      toast.error('You already have an active session. Resume or end it first.');
-      return;
+  const loadActiveSession = useCallback(async () => {
+    setIsCheckingSession(true);
+    try {
+      const { data } = await interviewAPI.listSessions({ status: 'active', limit: 1 });
+      const activeSession = data?.data?.[0] || null;
+      setExistingSessionId(activeSession?._id || null);
+    } catch (error) {
+      setExistingSessionId(null);
+    } finally {
+      setIsCheckingSession(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadActiveSession();
+  }, [loadActiveSession]);
+
+  const handleStart = async () => {
+    if (existingSessionId) return;
 
     const result = await dispatch(startSession(config));
     if (result.payload?.session?._id) {
       navigate(`/interview/${result.payload.session._id}`);
+      return;
+    }
+
+    if (typeof result.payload === 'string' && result.payload.toLowerCase().includes('active interview session')) {
+      await loadActiveSession();
     }
   };
 
-  const handleResumeActive = () => {
-    if (!activeSession?._id) return;
-    navigate(`/interview/${activeSession._id}`);
-  };
+  const handleAbandonExistingSession = async () => {
+    if (!existingSessionId) return;
 
-  const handleEndActive = async () => {
-    if (!activeSession?._id) return;
-    setIsEndingActive(true);
-    try {
-      await interviewAPI.abandonSession(activeSession._id);
-      setActiveSession(null);
-      toast.success('Active session ended. You can start a new interview now.');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to end active session');
-    } finally {
-      setIsEndingActive(false);
+    setIsAbandoningSession(true);
+    const result = await dispatch(abandonSession(existingSessionId));
+    if (abandonSession.fulfilled.match(result)) {
+      setExistingSessionId(null);
+    } else {
+      await loadActiveSession();
     }
+    setIsAbandoningSession(false);
   };
 
   return (
@@ -106,28 +101,35 @@ const InterviewSetupPage = () => {
         <p className="text-gray-400 mt-1">Configure your practice session</p>
       </div>
 
-      {!isCheckingActive && activeSession && (
-        <div className="mb-6 bg-amber-900/20 border border-amber-700/60 rounded-xl p-4">
-          <p className="text-amber-200 text-sm">
-            You already have an active interview session. Resume it, or end it to start a new one.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              onClick={handleResumeActive}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              Resume Active Session
-            </button>
-            <button
-              onClick={handleEndActive}
-              disabled={isEndingActive}
-              className="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              {isEndingActive ? 'Ending...' : 'End Active Session'}
-            </button>
+      {isCheckingSession ? (
+        <div className="mb-6 bg-gray-900 border border-gray-800 rounded-xl p-4">
+          <p className="text-sm text-gray-400">Checking for existing active sessions...</p>
+        </div>
+      ) : existingSessionId ? (
+        <div className="mb-6 bg-red-950/40 border border-red-900 rounded-xl p-4">
+          <div className="flex items-start space-x-3">
+            <FiAlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
+            <div className="flex-1">
+              <h2 className="text-red-300 font-semibold">Active Session Found</h2>
+              <p className="text-red-200/80 text-sm mt-1">
+                You already have an active interview session. Abandon it first to start a new one.
+              </p>
+              <button
+                onClick={handleAbandonExistingSession}
+                disabled={isAbandoningSession || isLoading}
+                className="mt-3 inline-flex items-center space-x-2 bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              >
+                {isAbandoningSession ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  <FiTrash2 className="w-4 h-4" />
+                )}
+                <span>Abandon Existing Session</span>
+              </button>
+            </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="space-y-8">
         {/* Language Selection */}
@@ -263,7 +265,7 @@ const InterviewSetupPage = () => {
         {/* Start Button */}
         <button
           onClick={handleStart}
-          disabled={isLoading || config.topics.length === 0 || !!activeSession}
+          disabled={isLoading || config.topics.length === 0 || !!existingSessionId || isCheckingSession || isAbandoningSession}
           className="w-full flex items-center justify-center space-x-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-lg py-4 rounded-xl transition-colors"
         >
           {isLoading ? (
@@ -271,7 +273,7 @@ const InterviewSetupPage = () => {
           ) : (
             <>
               <FiPlay className="w-6 h-6" />
-              <span>Start Interview</span>
+              <span>{existingSessionId ? 'Resolve Active Session First' : 'Start Interview'}</span>
             </>
           )}
         </button>

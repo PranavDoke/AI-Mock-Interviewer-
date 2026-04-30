@@ -152,12 +152,6 @@ const selectNextQuestion = async (session, skillProfile, previousQuestionIds) =>
     session.config.topics,
     session.difficultyProgression
   );
-  const typeFilter =
-    session.config.type === 'mixed'
-      ? { $in: ['coding', 'conceptual'] }
-      : session.config.type === 'technical'
-        ? 'coding'
-        : session.config.type;
 
   logger.debug(`Adaptive engine: selecting difficulty=${difficulty}, topic=${topic}`);
 
@@ -166,7 +160,7 @@ const selectNextQuestion = async (session, skillProfile, previousQuestionIds) =>
     topic,
     difficulty: Math.round(difficulty),
     isActive: true,
-    type: typeFilter,
+    type: session.config.type === 'mixed' ? { $in: ['coding', 'conceptual'] } : session.config.type,
     _id: { $nin: previousQuestionIds },
   });
 
@@ -176,7 +170,6 @@ const selectNextQuestion = async (session, skillProfile, previousQuestionIds) =>
       topic,
       difficulty: { $gte: Math.max(1, Math.round(difficulty) - 1), $lte: Math.min(5, Math.round(difficulty) + 1) },
       isActive: true,
-      type: typeFilter,
       _id: { $nin: previousQuestionIds },
     });
   }
@@ -186,7 +179,6 @@ const selectNextQuestion = async (session, skillProfile, previousQuestionIds) =>
     question = await Question.findOne({
       difficulty: { $gte: Math.max(1, Math.round(difficulty) - 1), $lte: Math.min(5, Math.round(difficulty) + 1) },
       isActive: true,
-      type: typeFilter,
       _id: { $nin: previousQuestionIds },
     });
   }
