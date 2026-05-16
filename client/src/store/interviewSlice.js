@@ -83,10 +83,32 @@ const interviewSlice = createSlice({
     isSubmitting: false,
     isComplete: false,
     questionsRemaining: 0,
+    exhaustionReason: null,
     error: null,
     timer: 0, // seconds elapsed
   },
   reducers: {
+    hydrateInterview: (state, action) => {
+      const { session, currentQuestion } = action.payload || {};
+      state.session = session || null;
+      state.currentQuestion = currentQuestion || null;
+      state.exhaustionReason = null;
+      state.error = null;
+      state.isComplete = false;
+      state.isLoading = false;
+      state.isSubmitting = false;
+      state.isExecuting = false;
+
+      const lang = session?.config?.language || 'javascript';
+      state.code =
+        currentQuestion?.starterCode?.[lang] ||
+        currentQuestion?.starterCode?.javascript ||
+        '';
+
+      const maxQuestions = session?.config?.maxQuestions || 5;
+      const answeredCount = Array.isArray(session?.submissions) ? session.submissions.length : 0;
+      state.questionsRemaining = Math.max(maxQuestions - answeredCount - (currentQuestion ? 1 : 0), 0);
+    },
     setCode: (state, action) => {
       state.code = action.payload;
     },
@@ -105,6 +127,7 @@ const interviewSlice = createSlice({
       state.evaluation = null;
       state.isComplete = false;
       state.questionsRemaining = 0;
+      state.exhaustionReason = null;
       state.timer = 0;
       state.error = null;
     },
@@ -124,12 +147,13 @@ const interviewSlice = createSlice({
         state.isLoading = false;
         state.session = action.payload.session;
         state.currentQuestion = action.payload.currentQuestion;
+        state.exhaustionReason = action.payload.reason || null;
         const lang = action.payload.session?.config?.language || 'javascript';
         state.code =
           action.payload.currentQuestion?.starterCode?.[lang] ||
           action.payload.currentQuestion?.starterCode?.javascript ||
           '';
-        state.isComplete = false;
+        state.isComplete = Boolean(action.payload.completed);
         state.questionsRemaining = (action.payload.session?.config?.maxQuestions || 5) - 1;
       })
       .addCase(startSession.rejected, (state, action) => {
@@ -142,12 +166,16 @@ const interviewSlice = createSlice({
       })
       .addCase(getNextQuestion.fulfilled, (state, action) => {
         state.isLoading = false;
+        state.exhaustionReason = action.payload.reason || null;
         if (action.payload.completed) {
           state.isComplete = true;
           state.session = action.payload.session || state.session;
         } else {
           const lang = state.session?.config?.language || 'javascript';
           const maxQ = state.session?.config?.maxQuestions || 5;
+          if (state.session) {
+            state.session.currentQuestionId = action.payload.question?._id || state.session.currentQuestionId;
+          }
           state.currentQuestion = action.payload.question;
           state.code =
             action.payload.question?.starterCode?.[lang] ||
@@ -173,6 +201,12 @@ const interviewSlice = createSlice({
         state.evaluation = action.payload.evaluation;
         state.isComplete = action.payload.isComplete;
         state.questionsRemaining = action.payload.questionsRemaining;
+        if (state.session && action.payload.submission) {
+          if (!Array.isArray(state.session.submissions)) {
+            state.session.submissions = [];
+          }
+          state.session.submissions.push(action.payload.submission);
+        }
       })
       .addCase(submitAnswer.rejected, (state, action) => {
         state.isSubmitting = false;
@@ -200,5 +234,5 @@ const interviewSlice = createSlice({
   },
 });
 
-export const { setCode, setExplanation, setTimer, resetInterview, clearEvaluation } = interviewSlice.actions;
+export const { hydrateInterview, setCode, setExplanation, setTimer, resetInterview, clearEvaluation } = interviewSlice.actions;
 export default interviewSlice.reducer;

@@ -2,6 +2,14 @@ const { Question } = require('../models');
 const { clamp, randomInt } = require('../utils/helpers');
 const logger = require('../config/logger');
 
+const DEFAULT_TOPICS = [
+  'arrays', 'string', 'searching', 'stack', 'dp', 'graph',
+  'heap', 'matrix', 'hashing', 'hash-tables', 'backtracking',
+  'tree', 'design', 'binary-search', 'bit-manipulation',
+  'greedy', 'intervals', 'linked-list', 'segment-tree',
+  'sliding-window', 'two-pointers', 'math', 'sorting',
+];
+
 /**
  * Adaptive Difficulty Engine
  *
@@ -96,7 +104,7 @@ const calculateNextDifficulty = (session) => {
 const selectNextTopic = (skillProfile, allowedTopics, progression) => {
   if (!allowedTopics || allowedTopics.length === 0) {
     // Default technical topics
-    allowedTopics = ['arrays', 'strings', 'trees', 'dynamic-programming', 'sorting'];
+    allowedTopics = DEFAULT_TOPICS;
   }
 
   // Count how many times each topic was already asked
@@ -152,6 +160,12 @@ const selectNextQuestion = async (session, skillProfile, previousQuestionIds) =>
     session.config.topics,
     session.difficultyProgression
   );
+  const typeFilter =
+    session.config.type === 'mixed'
+      ? { $in: ['coding', 'conceptual'] }
+      : session.config.type === 'technical'
+        ? 'coding'
+        : session.config.type;
 
   logger.debug(`Adaptive engine: selecting difficulty=${difficulty}, topic=${topic}`);
 
@@ -160,7 +174,8 @@ const selectNextQuestion = async (session, skillProfile, previousQuestionIds) =>
     topic,
     difficulty: Math.round(difficulty),
     isActive: true,
-    type: session.config.type === 'mixed' ? { $in: ['coding', 'conceptual'] } : session.config.type,
+    source: 'leetcode-style',
+    type: typeFilter,
     _id: { $nin: previousQuestionIds },
   });
 
@@ -170,23 +185,43 @@ const selectNextQuestion = async (session, skillProfile, previousQuestionIds) =>
       topic,
       difficulty: { $gte: Math.max(1, Math.round(difficulty) - 1), $lte: Math.min(5, Math.round(difficulty) + 1) },
       isActive: true,
+      source: 'leetcode-style',
+      type: typeFilter,
       _id: { $nin: previousQuestionIds },
     });
   }
 
-  // Fallback: any topic at similar difficulty
+  // Fallback: try any topic with same difficulty
   if (!question) {
+    logger.debug(`No question found for topic=${topic}. Trying any topic with difficulty=${Math.round(difficulty)}`);
+    question = await Question.findOne({
+      difficulty: Math.round(difficulty),
+      isActive: true,
+      source: 'leetcode-style',
+      type: typeFilter,
+      _id: { $nin: previousQuestionIds },
+    });
+  }
+
+  // Fallback: try any topic with difficulty range
+  if (!question) {
+    logger.debug(`No question found for specific difficulty. Trying difficulty range.`);
     question = await Question.findOne({
       difficulty: { $gte: Math.max(1, Math.round(difficulty) - 1), $lte: Math.min(5, Math.round(difficulty) + 1) },
       isActive: true,
+      source: 'leetcode-style',
+      type: typeFilter,
       _id: { $nin: previousQuestionIds },
     });
   }
 
-  // Final fallback: any available question
+  // Final fallback: get any active question
   if (!question) {
+    logger.debug(`No question found with any filter. Getting any active question.`);
     question = await Question.findOne({
       isActive: true,
+      source: 'leetcode-style',
+      type: typeFilter,
       _id: { $nin: previousQuestionIds },
     });
   }

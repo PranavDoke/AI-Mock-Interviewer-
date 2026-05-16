@@ -7,6 +7,7 @@ const { auth, authorize } = require('../middlewares/auth');
 
 // Public: list and get questions (auth required)
 router.get('/', auth, validate(questionValidation.listQuestions), questionController.listQuestions);
+router.get('/topics/availability', auth, validate(questionValidation.topicAvailability), questionController.getTopicAvailability);
 router.get('/:questionId', auth, questionController.getQuestion);
 
 // Admin: create and manage questions

@@ -12,6 +12,11 @@ const listQuestions = catchAsync(async (req, res) => {
   paginatedResponse(res, questions, page, limit, total);
 });
 
+const getTopicAvailability = catchAsync(async (req, res) => {
+  const availability = await questionService.getTopicAvailability(req.query);
+  successResponse(res, availability);
+});
+
 const getQuestion = catchAsync(async (req, res) => {
   const question = await questionService.getQuestionById(req.params.questionId);
   successResponse(res, { question });
@@ -31,6 +36,7 @@ const seedQuestions = catchAsync(async (req, res) => {
 module.exports = {
   createQuestion,
   listQuestions,
+  getTopicAvailability,
   getQuestion,
   generateQuestion,
   seedQuestions,

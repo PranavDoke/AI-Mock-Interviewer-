@@ -12,6 +12,9 @@ const ApiError = require('./utils/ApiError');
 
 const app = express();
 
+// API responses should not rely on conditional browser caching in dev.
+app.disable('etag');
+
 // Security headers
 app.use(helmet());
 
@@ -37,6 +40,14 @@ app.use(compression());
 
 // HTTP request logging
 app.use(morganMiddleware);
+
+// Prevent stale/conditional caching for API endpoints.
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 
 // Rate limiting
 if (config.env === 'production') {

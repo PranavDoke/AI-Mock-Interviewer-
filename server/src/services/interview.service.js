@@ -2,12 +2,33 @@ const { InterviewSession, Question, User } = require('../models');
 const ApiError = require('../utils/ApiError');
 const adaptiveEngine = require('./adaptive.service');
 const aiService = require('./ai.service');
+const questionService = require('./question.service');
 const userService = require('./user.service');
+
+const getAttemptedQuestionIds = async (userId) => {
+  const sessions = await InterviewSession.find(
+    { userId },
+    { 'submissions.questionId': 1 }
+  ).lean();
+
+  const unique = new Set();
+  sessions.forEach((session) => {
+    (session.submissions || []).forEach((submission) => {
+      if (submission.questionId) {
+        unique.add(String(submission.questionId));
+      }
+    });
+  });
+
+  return Array.from(unique);
+};
 
 /**
  * Start a new interview session.
  */
 const startSession = async (userId, sessionConfig) => {
+  await questionService.seedQuestions();
+
   // Check for existing active session
   const activeSession = await InterviewSession.findOne({ userId, status: 'active' });
   if (activeSession) {
@@ -29,11 +50,16 @@ const startSession = async (userId, sessionConfig) => {
   });
 
   // Get first question
+  // Only exclude questions already in this session (which is empty for new sessions)
+  const previousQuestionIds = session.submissions.map((s) => String(s.questionId));
   const firstQuestion = await adaptiveEngine.selectNextQuestion(
     session,
     user.skillProfile,
-    []
+    previousQuestionIds
   );
+
+  session.currentQuestionId = firstQuestion?._id || null;
+  await session.save();
 
   return { session, currentQuestion: firstQuestion };
 };
@@ -53,8 +79,9 @@ const getNextQuestion = async (sessionId, userId) => {
   }
 
   const user = await User.findById(userId);
-  const previousQuestionIds = session.submissions.map((s) => s.questionId);
+  const previousQuestionIds = session.submissions.map((s) => String(s.questionId));
 
+  // Only exclude questions already in this session, allowing reuse across different sessions
   const nextQuestion = await adaptiveEngine.selectNextQuestion(
     session,
     user.skillProfile,
@@ -62,13 +89,19 @@ const getNextQuestion = async (sessionId, userId) => {
   );
 
   if (!nextQuestion) {
-    return { completed: true, session };
+    return { completed: true, session, reason: 'topic_pool_exhausted' };
   }
 
+  session.currentQuestionId = nextQuestion._id;
   session.currentQuestionIndex = session.submissions.length;
   await session.save();
 
-  return { completed: false, question: nextQuestion, questionIndex: session.currentQuestionIndex };
+  return {
+    completed: false,
+    question: nextQuestion,
+    questionIndex: session.currentQuestionIndex,
+    reason: null,
+  };
 };
 
 /**
@@ -99,6 +132,17 @@ const submitAnswer = async (sessionId, userId, answerData) => {
     code: answerData.code || '',
     language: answerData.language || session.config.language,
     explanation: answerData.explanation || '',
+    executionResult: {
+      executionTimeMs: evaluation.avgExecutionTimeMs || 0,
+      timedOut: (evaluation.testResults || []).some((t) => t.timedOut),
+    },
+    testResults: (evaluation.testResults || []).map((t) => ({
+      input: t.input,
+      expectedOutput: t.expectedOutput,
+      actualOutput: t.actualOutput,
+      passed: t.passed,
+      executionTimeMs: t.executionTimeMs,
+    })),
     evaluation,
     startedAt: answerData.startedAt || new Date(),
     submittedAt: new Date(),
@@ -112,14 +156,14 @@ const submitAnswer = async (sessionId, userId, answerData) => {
     questionIndex: session.submissions.length - 1,
     difficulty: question.difficulty,
     topic: question.topic,
-    score: evaluation.overallScore,
+    score: evaluation.codeCorrectness,
   });
 
   // Update user skill profile
   await userService.updateSkillProfile(
     userId,
     question.topic,
-    evaluation.overallScore,
+    evaluation.codeCorrectness,
     submission.timeSpentMs
   );
 
@@ -127,7 +171,7 @@ const submitAnswer = async (sessionId, userId, answerData) => {
   question.timesAsked += 1;
   question.avgAcceptanceRate = Math.round(
     (question.avgAcceptanceRate * (question.timesAsked - 1) +
-      (evaluation.overallScore >= 60 ? 100 : 0)) /
+      (evaluation.codeCorrectness >= 60 ? 100 : 0)) /
       question.timesAsked
   );
   await question.save();
@@ -154,6 +198,7 @@ const submitAnswer = async (sessionId, userId, answerData) => {
 const completeSession = async (session, userId) => {
   session.status = 'completed';
   session.completedAt = new Date();
+  session.currentQuestionId = null;
 
   // Calculate session scores
   const submissions = session.submissions;
@@ -162,7 +207,7 @@ const completeSession = async (session, userId) => {
 
   session.scores.overall = Math.round(totalScore / scores.length);
   session.scores.accuracy = Math.round(
-    (scores.filter((s) => s >= 60).length / scores.length) * 100
+    (submissions.filter((s) => (s.evaluation?.codeCorrectness || 0) >= 60).length / submissions.length) * 100
   );
   session.scores.avgTimePerQuestion = Math.round(
     submissions.reduce((sum, s) => sum + s.timeSpentMs, 0) / submissions.length
@@ -229,9 +274,23 @@ const abandonSession = async (sessionId, userId) => {
  */
 const getSession = async (sessionId, userId) => {
   const session = await InterviewSession.findOne({ _id: sessionId, userId })
+    .populate('currentQuestionId', 'title description topic difficulty type starterCode testCases constraints hints solutionApproach complexityMetrics tags')
     .populate('submissions.questionId', 'title topic difficulty type');
   if (!session) {
     throw new ApiError(404, 'Session not found.');
+  }
+  // If an active session has no currentQuestion persisted, fetch and persist one
+  if (session.status === 'active' && !session.currentQuestionId) {
+    try {
+      await getNextQuestion(sessionId, userId);
+      // re-populate with the newly assigned currentQuestionId
+      return InterviewSession.findOne({ _id: sessionId, userId })
+        .populate('currentQuestionId', 'title description topic difficulty type starterCode testCases constraints hints solutionApproach complexityMetrics tags')
+        .populate('submissions.questionId', 'title topic difficulty type');
+    } catch (err) {
+      // If fetching next question fails, return the original session so caller can handle
+      return session;
+    }
   }
   return session;
 };

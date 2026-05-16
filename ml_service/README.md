@@ -1,6 +1,6 @@
 # ML Score Prediction Service
 
-This microservice provides a simple score prediction API for the evaluation pipeline. It uses a RandomForestRegressor trained on synthetic data as an initial model.
+This microservice provides a score prediction API for the evaluation pipeline. It uses a RandomForestRegressor trained on rubric-aligned synthetic submission data because the project does not include a labeled real-submission dataset.
 
 Quick start (local):
 
@@ -39,14 +39,25 @@ Example payload:
     "executionTime": 150,
     "codeLength": 80,
     "errorCount": 0,
-    "complexityScore": 30
+    "complexityScore": 30,
+    "implementationCompleteness": 90,
+    "codeQualityScore": 82,
+    "passedTestCases": 4,
+    "totalTestCases": 5,
+    "explanationClarity": 75,
+    "reasoningDepth": 70,
+    "structuredThinking": 72,
+    "approachRelevance": 78,
+    "explanationCompleteness": 74,
+    "hasMeaningfulCode": true,
+    "hasExplanation": true
   }
 }
 ```
 
 If no `model.joblib` exists, the service returns a deterministic fallback score.
 
-Recommendation: For better, more consistent feedback and improved score prediction, train the model by running `python train_model.py` before running the service. When the model is present, the backend will combine deterministic scores with the ML prediction and include `mlUsed` and `mlPrediction` fields in evaluation results so you can see when the model influenced feedback.
+Recommendation: train the model by running `python train_model.py` before running the service. When the model is present, the backend combines deterministic execution/static-analysis scores with the ML prediction and includes `mlUsed` and `mlPrediction` in evaluation results so you can see when the model influenced feedback.
 
 ## CI-Based Model Strategy (Recommended)
 

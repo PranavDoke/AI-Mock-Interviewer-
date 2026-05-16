@@ -1,4 +1,4 @@
-import { FiCheckCircle, FiXCircle, FiAlertCircle, FiCode, FiBookOpen, FiMessageSquare } from 'react-icons/fi';
+import { FiCheckCircle, FiXCircle, FiAlertCircle, FiCode, FiBookOpen, FiMessageSquare, FiClock } from 'react-icons/fi';
 
 const ScoreBar = ({ label, score }) => {
   const pct = Math.round(score);
@@ -34,6 +34,9 @@ const FeedbackPanel = ({ evaluation }) => {
   // codeCorrectness, codeQuality, explanationClarity, reasoningDepth,
   // structuredThinking, overallScore, feedback, strengths[], improvements[]
   const overallScore = evaluation.overallScore ?? 0;
+  const passedTestCases = Number(evaluation.passedTestCases ?? 0);
+  const totalTestCases = Number(evaluation.totalTestCases ?? 0);
+  const avgExecutionTimeMs = evaluation.avgExecutionTimeMs ?? null;
   const feedback = evaluation.feedback || '';
   const strengths = evaluation.strengths || [];
   const improvements = evaluation.improvements || [];
@@ -47,7 +50,7 @@ const FeedbackPanel = ({ evaluation }) => {
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white flex items-center space-x-2">
             <FiBookOpen />
-            <span>AI Feedback</span>
+            <span>Evaluation Feedback</span>
           </h3>
           <div className={`flex items-center space-x-2 ${grade.color}`}>
             <GradeIcon className="w-5 h-5" />
@@ -58,6 +61,32 @@ const FeedbackPanel = ({ evaluation }) => {
       </div>
 
       <div className="p-4 space-y-5">
+        {(totalTestCases > 0 || avgExecutionTimeMs !== null) && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+              <p className="text-xs text-gray-400 uppercase tracking-wide">Test Cases</p>
+              <p className="text-sm font-semibold text-white mt-1">
+                {passedTestCases}/{totalTestCases} Passed
+              </p>
+            </div>
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+              <p className="text-xs text-gray-400 uppercase tracking-wide">Correctness</p>
+              <p className="text-sm font-semibold text-white mt-1">
+                {Math.round(evaluation.codeCorrectness ?? 0)}%
+              </p>
+            </div>
+            <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+              <p className="text-xs text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                <FiClock className="w-3.5 h-3.5" />
+                Time
+              </p>
+              <p className="text-sm font-semibold text-white mt-1">
+                {avgExecutionTimeMs !== null ? `${Math.round(avgExecutionTimeMs)}ms` : 'N/A'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Score Breakdown */}
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">

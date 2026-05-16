@@ -42,27 +42,35 @@ const saveRefreshToken = async (token, userId) => {
  */
 const register = async ({ name, email, password }) => {
   // Check if email already exists
-  const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
   if (existingUser) {
     throw new ApiError(409, 'Email already registered.');
   }
 
-  // Create user
-  const user = await User.create({ name, email, password });
+  try {
+    // Create user
+    const user = await User.create({ name, email: email.toLowerCase(), password });
 
-  // Generate tokens
-  const tokens = generateTokens(user._id);
-  await saveRefreshToken(tokens.refreshToken, user._id);
+    // Generate tokens
+    const tokens = generateTokens(user._id);
+    await saveRefreshToken(tokens.refreshToken, user._id);
 
-  return { user, tokens };
+    return { user, tokens };
+  } catch (error) {
+    // Handle duplicate key error
+    if (error.code === 11000 && error.keyPattern?.email) {
+      throw new ApiError(409, 'Email already registered.');
+    }
+    throw error;
+  }
 };
 
 /**
  * Login with email and password.
  */
 const login = async ({ email, password }) => {
-  // Find user with password field
-  const user = await User.findOne({ email }).select('+password');
+  // Find user with password field - normalize email to lowercase
+  const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
   if (!user || !(await user.comparePassword(password))) {
     throw new ApiError(401, 'Invalid email or password.');
   }

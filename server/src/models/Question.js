@@ -16,11 +16,11 @@ const questionSchema = new mongoose.Schema(
       required: true,
       index: true,
       enum: [
-        'arrays', 'strings', 'linked-lists', 'trees', 'graphs',
-        'dynamic-programming', 'sorting', 'searching', 'recursion',
-        'stacks-queues', 'hash-tables', 'greedy', 'backtracking',
-        'bit-manipulation', 'math', 'system-design', 'oop',
-        'databases', 'networking', 'os-concepts',
+        'arrays', 'string', 'searching', 'stack', 'dp', 'graph',
+        'heap', 'matrix', 'hashing', 'hash-tables', 'backtracking',
+        'tree', 'design', 'binary-search', 'bit-manipulation',
+        'greedy', 'intervals', 'linked-list', 'segment-tree',
+        'sliding-window', 'two-pointers', 'math', 'sorting',
       ],
     },
     difficulty: {
@@ -45,6 +45,11 @@ const questionSchema = new mongoose.Schema(
       {
         input: { type: String, required: true },
         expectedOutput: { type: String, required: true },
+        comparisonMode: {
+          type: String,
+          enum: ['exact', 'unorderedDeep', 'longestPalindrome', 'nQueens', 'treeArray'],
+          default: 'exact',
+        },
         isHidden: { type: Boolean, default: false },
         explanation: String,
       },
@@ -55,6 +60,17 @@ const questionSchema = new mongoose.Schema(
     solutionApproach: String,
     timeComplexity: String,
     spaceComplexity: String,
+    referenceUrls: [String],
+    testHarness: {
+      type: String,
+      enum: ['function', 'tree', 'graph-clone', 'operations', 'codec', 'linked-list'],
+      default: 'function',
+    },
+    canonicalSolutions: {
+      type: Map,
+      of: String,
+      default: {},
+    },
     // For conceptual/behavioral questions
     expectedKeyPoints: [String],
     rubric: {
@@ -72,7 +88,7 @@ const questionSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     source: {
       type: String,
-      enum: ['manual', 'ai-generated', 'imported'],
+      enum: ['manual', 'ai-generated', 'imported', 'leetcode-style'],
       default: 'manual',
     },
   },

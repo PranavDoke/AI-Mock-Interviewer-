@@ -37,5 +37,6 @@ export const analyticsAPI = {
 
 export const questionAPI = {
   listQuestions: (params) => api.get('/questions', { params }),
+  getTopicAvailability: (params) => api.get('/questions/topics/availability', { params }),
   getQuestion: (id) => api.get(`/questions/${id}`),
 };

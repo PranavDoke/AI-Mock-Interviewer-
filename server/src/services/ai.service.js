@@ -2,11 +2,10 @@ const config = require('../config/config');
 const logger = require('../config/logger');
 const ApiError = require('../utils/ApiError');
 const executionService = require('./execution.service');
-const { extractFeatures } = require('../eval/featureExtractor');
-const { computeScore } = require('../eval/scoring');
+const { extractFeatures, extractExplanationFeatures } = require('../eval/featureExtractor');
+const { computeScore, explanationScoreFrom } = require('../eval/scoring');
 const { generateFeedback } = require('../eval/feedbackEngine');
 const { predictScore } = require('../eval/mlClient');
-const { decideNextDifficulty } = require('../eval/adaptiveDifficulty');
 
 /**
  * AI Service — Abstract provider layer.
@@ -248,96 +247,290 @@ const callLLM = async (prompt, maxTokens = 1000) => {
   }
 };
 
+const clampScore = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+
+const uniq = (items) => Array.from(new Set((items || []).filter(Boolean)));
+
+const buildDeterministicExplanationEval = (features) => {
+  if (!features.hasExplanation) {
+    return {
+      explanationClarity: 0,
+      reasoningDepth: 0,
+      structuredThinking: 0,
+      approachRelevance: 0,
+      explanationCompleteness: 0,
+      feedback: '',
+      strengths: [],
+      improvements: [],
+    };
+  }
+
+  const strengths = [];
+  const improvements = [];
+
+  if (features.approachRelevance >= 70) {
+    strengths.push('Explanation aligns with the expected approach');
+  } else {
+    improvements.push('Connect the explanation more directly to the expected approach');
+  }
+
+  if (features.reasoningDepth >= 70) {
+    strengths.push('Reasoning includes useful implementation details');
+  } else {
+    improvements.push('Explain why the algorithm works and mention edge cases');
+  }
+
+  if (features.structuredThinking < 55) {
+    improvements.push('Organize the explanation into clear steps');
+  }
+
+  return {
+    explanationClarity: features.explanationClarity,
+    reasoningDepth: features.reasoningDepth,
+    structuredThinking: features.structuredThinking,
+    approachRelevance: features.approachRelevance,
+    explanationCompleteness: features.explanationCompleteness,
+    feedback: features.explanationCompleteness >= 70
+      ? 'The explanation is clear and mostly aligned with the expected approach.'
+      : 'The explanation needs more detail about the algorithm, edge cases, and complexity.',
+    strengths,
+    improvements,
+  };
+};
+
+const blendExplanationEval = (llmEval, deterministicEval) => {
+  if (!llmEval) return deterministicEval;
+
+  const average = (a, b) => clampScore((Number(a || 0) * 0.5) + (Number(b || 0) * 0.5));
+
+  return {
+    explanationClarity: average(llmEval.explanationClarity, deterministicEval.explanationClarity),
+    reasoningDepth: average(llmEval.reasoningDepth, deterministicEval.reasoningDepth),
+    structuredThinking: average(llmEval.structuredThinking, deterministicEval.structuredThinking),
+    approachRelevance: deterministicEval.approachRelevance,
+    explanationCompleteness: deterministicEval.explanationCompleteness,
+    feedback: llmEval.feedback || deterministicEval.feedback,
+    strengths: uniq([...(deterministicEval.strengths || []), ...(llmEval.strengths || [])]),
+    improvements: uniq([...(deterministicEval.improvements || []), ...(llmEval.improvements || [])]),
+  };
+};
+
+const combineSubmissionScores = ({ codeScore = 0, explanationScore = 0, hasCode = false, hasExplanation = false }) => {
+  if (hasCode && hasExplanation) {
+    return clampScore((codeScore * 0.85) + (explanationScore * 0.15));
+  }
+
+  if (hasCode) return clampScore(codeScore);
+  if (hasExplanation) return clampScore(explanationScore);
+  return 0;
+};
+
 /**
  * Evaluate a student's answer (code + explanation).
  */
 const evaluateAnswer = async ({ question, code, language, explanation }) => {
   let codeEval = { codeCorrectness: 0, codeQuality: 0, feedback: '', strengths: [], improvements: [] };
-  let explEval = { explanationClarity: 0, reasoningDepth: 0, structuredThinking: 0 };
+  let explEval = {
+    explanationClarity: 0,
+    reasoningDepth: 0,
+    structuredThinking: 0,
+    approachRelevance: 0,
+    explanationCompleteness: 0,
+    feedback: '',
+    strengths: [],
+    improvements: [],
+  };
+
+  const hasCode = !!(code && code.trim());
+  const explanationFeatures = extractExplanationFeatures({ question, explanation });
+
+  if (explanationFeatures.hasExplanation) {
+    const deterministicExplanation = buildDeterministicExplanationEval(explanationFeatures);
+    try {
+      const prompt = PROMPTS.evaluateExplanation(question, explanation);
+      const llmExplanation = await callLLM(prompt);
+      explEval = blendExplanationEval(llmExplanation, deterministicExplanation);
+    } catch {
+      explEval = deterministicExplanation;
+    }
+  }
+
+  const explanationScore = explanationScoreFrom({
+    hasExplanation: explanationFeatures.hasExplanation,
+    ...explEval,
+  });
 
   // Evaluate code if present — use deterministic pipeline + optional ML
-  if (code && code.trim()) {
+  if (hasCode) {
     try {
       // If question provides test cases, run them
       let testResults = [];
       if (question.testCases && Array.isArray(question.testCases) && question.testCases.length) {
         try {
-          testResults = await executionService.runTestCases(code, language, question.testCases);
+          testResults = await executionService.runTestCases(code, language, question.testCases, question);
+          
+          // Check if Piston is unavailable
+          const pistonUnavailable = testResults.some(r => r.error && r.error.includes('Piston'));
+          if (pistonUnavailable) {
+            logger.warn(`⚠ PISTON API UNAVAILABLE - Test execution failed`);
+            logger.warn(`  Please ensure Piston is running at http://localhost:2000`);
+            logger.warn(`  Or update PISTON_URL in server/.env file`);
+          }
+          
+          logger.info(`✓ Test execution completed`, { 
+            language,
+            totalTests: question.testCases.length, 
+            passed: testResults.filter(r => r.passed).length,
+            failed: testResults.filter(r => !r.passed).length,
+            testPassRate: testResults.length > 0 ? Math.round((testResults.filter(r => r.passed).length / testResults.length) * 100) + '%' : 'N/A',
+            pistonUnavailable
+          });
+          
+          // Log individual test results
+          testResults.forEach((result, idx) => {
+            logger.debug(`Test ${idx + 1}:`, {
+              input: result.input.substring(0, 50),
+              expected: result.expectedOutput.substring(0, 30),
+              actual: result.actualOutput.substring(0, 30),
+              passed: result.passed ? '✓' : '✗',
+              error: result.error ? result.error.substring(0, 50) : 'none'
+            });
+          });
         } catch (err) {
-          // execution issues should not break evaluation pipeline
-          logger.debug(`Test execution failed: ${err.message}`);
+          logger.error(`✗ Test execution failed: ${err.message}`, { stack: err.stack });
           testResults = [];
         }
       }
 
-      const features = extractFeatures({ code, language, testResults });
+      const totalTestCases = testResults.length;
+      const passedTestCases = testResults.filter((r) => r.passed).length;
+      const correctness = totalTestCases > 0 ? Math.round((passedTestCases / totalTestCases) * 100) : 0;
+      const avgExecutionTimeMs = totalTestCases > 0
+        ? Math.round(testResults.reduce((sum, r) => sum + (r.executionTimeMs || 0), 0) / totalTestCases)
+        : null;
+
+      const codeFeatures = extractFeatures({ code, language, testResults });
+      const features = {
+        ...codeFeatures,
+        ...explanationFeatures,
+        explanationClarity: explEval.explanationClarity || explanationFeatures.explanationClarity,
+        reasoningDepth: explEval.reasoningDepth || explanationFeatures.reasoningDepth,
+        structuredThinking: explEval.structuredThinking || explanationFeatures.structuredThinking,
+        approachRelevance: explEval.approachRelevance ?? explanationFeatures.approachRelevance,
+        explanationCompleteness: explEval.explanationCompleteness || explanationFeatures.explanationCompleteness,
+        passedTestCases,
+        totalTestCases,
+      };
+      logger.info(`✓ Features extracted`, { 
+        testPassRate: features.testPassRate + '%',
+        codeLength: features.codeLength + ' lines',
+        implementationCompleteness: features.implementationCompleteness + '%',
+        hasMeaningfulCode: features.hasMeaningfulCode ? '✓' : '✗',
+        complexityScore: features.complexityScore + '/100'
+      });
 
       // Deterministic score
       const { overallScore: detScore, components } = computeScore(features);
+      const codeQualityScore = (features.hasMeaningfulCode && features.implementationCompleteness > 0)
+        ? (components.codeQualityScore || 0)
+        : 0;
+      logger.info(`✓ Deterministic score computed`, { 
+        detScore,
+        testPassRate: features.testPassRate + '%',
+        codeQualityScore,
+        efficiencyScore: components.efficiencyScore,
+        explanationScore
+      });
 
-      // Attempt ML prediction (optional)
-      let mlResult = { predictedScore: null, usedModel: false };
-      try {
-        mlResult = await predictScore(features);
-      } catch (e) {
-        mlResult = { predictedScore: null, usedModel: false };
+      // Start from deterministic execution/static analysis, then let the trained model calibrate it.
+      let codeScore = detScore;
+
+      // If the submission has no meaningful implementation, correctness should dominate.
+      if (!features.hasMeaningfulCode || features.implementationCompleteness <= 0) {
+        codeScore = 0;
+        logger.warn(`⚠ Score adjusted to 0 due to no meaningful code`);
+      } else if (features.testPassRate === 0) {
+        codeScore = Math.min(codeScore, 15);
+        logger.warn(`⚠ Score capped at 15 due to 0 test pass rate`);
       }
 
-      // Combine scores: if ML available, average with deterministic (weighted)
-      const mlPred = mlResult && mlResult.predictedScore !== null ? Number(mlResult.predictedScore) : null;
-      const overallScore = mlPred !== null ? Math.round((detScore * 0.6) + (mlPred * 0.4)) : detScore;
+      let overallScore = combineSubmissionScores({
+        codeScore,
+        explanationScore,
+        hasCode: true,
+        hasExplanation: explanationFeatures.hasExplanation,
+      });
 
-      const fb = generateFeedback({ features, score: overallScore });
+      const mlPayload = {
+        ...features,
+        codeQualityScore,
+        explanationScore,
+        hasMeaningfulCode: features.hasMeaningfulCode,
+        hasExplanation: explanationFeatures.hasExplanation,
+      };
+      const mlResult = await predictScore(mlPayload);
+      const mlPred = Number.isFinite(mlResult.predictedScore)
+        ? clampScore(mlResult.predictedScore)
+        : null;
+
+      if (mlPred !== null) {
+        overallScore = clampScore((overallScore * 0.7) + (mlPred * 0.3));
+      }
+
+      if (correctness === 100 && features.hasMeaningfulCode) {
+        overallScore = explanationFeatures.hasExplanation
+          ? Math.max(overallScore, 95)
+          : 100;
+      }
+
+      const feedbackFeatures = {
+        ...features,
+        codeQualityScore,
+      };
+      const fb = generateFeedback({ features: feedbackFeatures, score: overallScore });
+      logger.info(`✓ Final score calculated`, { 
+        overallScore,
+        testPassRate: features.testPassRate + '%',
+        mlUsed: !!mlResult.usedModel,
+        mlPrediction: mlPred,
+        feedbackGenerated: fb.feedback.length + ' chars'
+      });
 
       codeEval = {
-        codeCorrectness: features.testPassRate,
-        codeQuality: components.codeQualityScore || 0,
+        codeCorrectness: correctness,
+        codeQuality: codeQualityScore,
         feedback: fb.feedback,
         strengths: fb.strengths,
         improvements: fb.weaknesses,
-        features,
+        recommendations: fb.recommendations || [],
+        features: feedbackFeatures,
         overallScore,
+        passedTestCases,
+        totalTestCases,
+        avgExecutionTimeMs,
+        testResults,
         mlUsed: !!mlResult.usedModel,
         mlPrediction: mlPred,
       };
     } catch (err) {
-      logger.error(`Evaluation pipeline error: ${err.message}`);
-      codeEval = MOCK_RESPONSES.evaluateCode();
-    }
-  }
-
-  // Evaluate explanation if present
-  if (explanation && explanation.trim()) {
-    try {
-      const prompt = PROMPTS.evaluateExplanation(question, explanation);
-      const result = await callLLM(prompt);
-      explEval = result || MOCK_RESPONSES.evaluateExplanation();
-    } catch {
-      explEval = MOCK_RESPONSES.evaluateExplanation();
+      logger.error(`Evaluation pipeline error: ${err.message}`, { stack: err.stack });
+      const fallback = MOCK_RESPONSES.evaluateCode();
+      codeEval = {
+        ...fallback,
+        overallScore: fallback.codeCorrectness || 0,
+        recommendations: fallback.improvements || [],
+      };
     }
   }
 
   // Calculate overall score
-  const hasCode = code && code.trim();
-  const hasExplanation = explanation && explanation.trim();
+  const hasExplanation = explanationFeatures.hasExplanation;
 
   let overallScore;
-  if (hasCode && hasExplanation) {
-    overallScore = Math.round(
-      codeEval.codeCorrectness * 0.35 +
-      codeEval.codeQuality * 0.15 +
-      explEval.explanationClarity * 0.2 +
-      explEval.reasoningDepth * 0.15 +
-      explEval.structuredThinking * 0.15
-    );
-  } else if (hasCode) {
-    overallScore = Math.round(codeEval.codeCorrectness * 0.6 + codeEval.codeQuality * 0.4);
+  if (hasCode) {
+    overallScore = clampScore(codeEval.overallScore);
   } else if (hasExplanation) {
-    overallScore = Math.round(
-      explEval.explanationClarity * 0.4 +
-      explEval.reasoningDepth * 0.35 +
-      explEval.structuredThinking * 0.25
-    );
+    overallScore = explanationScore;
   } else {
     overallScore = 0;
   }
@@ -348,10 +541,19 @@ const evaluateAnswer = async ({ question, code, language, explanation }) => {
     explanationClarity: explEval.explanationClarity || 0,
     reasoningDepth: explEval.reasoningDepth || 0,
     structuredThinking: explEval.structuredThinking || 0,
+    approachRelevance: explEval.approachRelevance || 0,
+    explanationCompleteness: explEval.explanationCompleteness || 0,
     overallScore,
     feedback: codeEval.feedback || explEval.feedback || '',
     strengths: [...(codeEval.strengths || []), ...(explEval.strengths || [])],
     improvements: [...(codeEval.improvements || []), ...(explEval.improvements || [])],
+    recommendations: uniq([...(codeEval.recommendations || []), ...(explEval.improvements || [])]),
+    passedTestCases: codeEval.passedTestCases ?? 0,
+    totalTestCases: codeEval.totalTestCases ?? 0,
+    avgExecutionTimeMs: codeEval.avgExecutionTimeMs ?? null,
+    testResults: codeEval.testResults || [],
+    mlUsed: codeEval.mlUsed || false,
+    mlPrediction: codeEval.mlPrediction || null,
   };
 };
 

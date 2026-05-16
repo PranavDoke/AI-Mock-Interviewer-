@@ -1,0 +1,1005 @@
+[
+  {
+    "title": "Kth Largest Element in an Array",
+    "description": "Given an integer array nums and an integer k, return the kth largest element in the array.\n\nNote that it is the kth largest element in the sorted order, not the kth distinct element.",
+    "topic": "heap",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function findKthLargest(nums, k) {\n}",
+      "python": "def find_kth_largest(nums, k):\n    pass",
+      "java": "public int findKthLargest(int[] nums, int k) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[3,2,1,5,6,4],2",
+        "expectedOutput": "5"
+      }
+    ],
+    "constraints": [
+      "1 <= k <= nums.length <= 10^5",
+      "-10^4 <= nums[i] <= 10^4"
+    ],
+    "hints": [
+      "Use heap or quickselect"
+    ],
+    "solutionApproach": "Use min-heap or quickselect.",
+    "timeComplexity": "O(n log k)",
+    "spaceComplexity": "O(k)",
+    "tags": [
+      "heap"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Sliding Window Maximum",
+    "description": "Given an array nums and an integer k, return the maximum value in each sliding window of size k.",
+    "topic": "arrays",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function maxSlidingWindow(nums, k) {\n}",
+      "python": "def max_sliding_window(nums, k):\n    pass",
+      "java": "public int[] maxSlidingWindow(int[] nums, int k) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[1,3,-1,-3,5,3,6,7],3",
+        "expectedOutput": "[3,3,5,5,6,7]"
+      }
+    ],
+    "constraints": [
+      "1 <= nums.length <= 10^5"
+    ],
+    "hints": [
+      "Use deque"
+    ],
+    "solutionApproach": "Maintain decreasing deque.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(k)",
+    "tags": [
+      "sliding window"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Longest Consecutive Sequence",
+    "description": "Given an unsorted array of integers nums, return the length of the longest consecutive elements sequence.\n\nYou must write an algorithm that runs in O(n) time.",
+    "topic": "arrays",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function longestConsecutive(nums) {\n}",
+      "python": "def longest_consecutive(nums):\n    pass",
+      "java": "public int longestConsecutive(int[] nums) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[100,4,200,1,3,2]",
+        "expectedOutput": "4"
+      }
+    ],
+    "constraints": [
+      "0 <= nums.length <= 10^5"
+    ],
+    "hints": [
+      "Use set"
+    ],
+    "solutionApproach": "Use hash set to track sequences.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "hashing"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Trapping Rain Water",
+    "description": "Given n non-negative integers representing elevation map, compute how much water it can trap after raining.",
+    "topic": "arrays",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function trap(height) {\n}",
+      "python": "def trap(height):\n    pass",
+      "java": "public int trap(int[] height) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[0,1,0,2,1,0,1,3,2,1,2,1]",
+        "expectedOutput": "6"
+      }
+    ],
+    "constraints": [
+      "n <= 10^5"
+    ],
+    "hints": [
+      "Two pointers"
+    ],
+    "solutionApproach": "Track left and right max.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(1)",
+    "tags": [
+      "two pointers"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Edit Distance",
+    "description": "Given two strings word1 and word2, return the minimum number of operations required to convert word1 to word2.\n\nYou can insert, delete or replace characters.",
+    "topic": "dp",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function minDistance(word1, word2) {\n}",
+      "python": "def min_distance(word1, word2):\n    pass",
+      "java": "public int minDistance(String word1, String word2) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "\"horse\",\"ros\"",
+        "expectedOutput": "3"
+      }
+    ],
+    "constraints": [
+      "0 <= length <= 500"
+    ],
+    "hints": [
+      "DP table"
+    ],
+    "solutionApproach": "Use 2D DP.",
+    "timeComplexity": "O(n*m)",
+    "spaceComplexity": "O(n*m)",
+    "tags": [
+      "dp"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Word Break",
+    "description": "Given a string s and a dictionary of words, return true if s can be segmented into a sequence of dictionary words.",
+    "topic": "dp",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function wordBreak(s, wordDict) {\n}",
+      "python": "def word_break(s, word_dict):\n    pass",
+      "java": "public boolean wordBreak(String s, List<String> wordDict) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "\"leetcode\",[\"leet\",\"code\"]",
+        "expectedOutput": "true"
+      }
+    ],
+    "constraints": [
+      "1 <= s.length <= 300"
+    ],
+    "hints": [
+      "DP"
+    ],
+    "solutionApproach": "Check substring DP.",
+    "timeComplexity": "O(n^2)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "dp"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Combination Sum",
+    "description": "Given an array of distinct integers candidates and a target integer target, return all unique combinations of candidates where the chosen numbers sum to target.",
+    "topic": "stack",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function combinationSum(candidates, target) {\n}",
+      "python": "def combination_sum(candidates, target):\n    pass",
+      "java": "public List<List<Integer>> combinationSum(int[] candidates, int target) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[2,3,6,7],7",
+        "expectedOutput": "[[2,2,3],[7]]"
+      }
+    ],
+    "constraints": [
+      "No duplicates"
+    ],
+    "hints": [
+      "Backtracking"
+    ],
+    "solutionApproach": "Try all combinations.",
+    "timeComplexity": "O(2^n)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "backtracking"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Permutations",
+    "description": "Given an array nums of distinct integers, return all possible permutations.",
+    "topic": "stack",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function permute(nums) {\n}",
+      "python": "def permute(nums):\n    pass",
+      "java": "public List<List<Integer>> permute(int[] nums) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[1,2,3]",
+        "expectedOutput": "all permutations"
+      }
+    ],
+    "constraints": [
+      "All elements distinct"
+    ],
+    "hints": [
+      "Backtracking"
+    ],
+    "solutionApproach": "Swap elements recursively.",
+    "timeComplexity": "O(n!)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "backtracking"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "N-Queens",
+    "description": "The n-queens puzzle is placing n queens on an n×n chessboard such that no two queens attack each other.\n\nReturn all distinct solutions.",
+    "topic": "stack",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function solveNQueens(n) {\n}",
+      "python": "def solve_n_queens(n):\n    pass",
+      "java": "public List<List<String>> solveNQueens(int n) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "n = 4",
+        "expectedOutput": "valid configurations"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 9"
+    ],
+    "hints": [
+      "Backtracking"
+    ],
+    "solutionApproach": "Place queens row by row.",
+    "timeComplexity": "O(n!)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "backtracking"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Course Schedule",
+    "description": "There are numCourses courses labeled from 0 to numCourses - 1.\n\nYou are given prerequisites where prerequisites[i] = [a, b] indicates that you must take course b before course a.\n\nReturn true if you can finish all courses.",
+    "topic": "graph",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function canFinish(numCourses, prerequisites) {\n}",
+      "python": "def can_finish(numCourses, prerequisites):\n    pass",
+      "java": "public boolean canFinish(int numCourses, int[][] prerequisites) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "2, [[1,0]]",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "2, [[1,0],[0,1]]",
+        "expectedOutput": "false"
+      }
+    ],
+    "constraints": [
+      "1 <= numCourses <= 2000"
+    ],
+    "hints": [
+      "Cycle detection"
+    ],
+    "solutionApproach": "Use DFS or topological sort.",
+    "timeComplexity": "O(V+E)",
+    "spaceComplexity": "O(V)",
+    "tags": [
+      "graph"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Clone Graph",
+    "description": "Given a reference of a node in a connected undirected graph, return a deep copy (clone) of the graph.\n\nEach node contains a value and a list of its neighbors.",
+    "topic": "graph",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function cloneGraph(node) {\n}",
+      "python": "def clone_graph(node):\n    pass",
+      "java": "public Node cloneGraph(Node node) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "adjList = [[2,4],[1,3],[2,4],[1,3]]",
+        "expectedOutput": "cloned graph structure"
+      }
+    ],
+    "constraints": [
+      "The number of nodes will be between 0 and 100",
+      "Node values are unique"
+    ],
+    "hints": [
+      "Use DFS or BFS",
+      "Use hashmap to store visited nodes"
+    ],
+    "solutionApproach": "Traverse graph and clone nodes using DFS/BFS.",
+    "timeComplexity": "O(V+E)",
+    "spaceComplexity": "O(V)",
+    "tags": [
+      "graph",
+      "dfs"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Maximum Depth of Binary Tree",
+    "description": "Given the root of a binary tree, return its maximum depth.\n\nThe maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.",
+    "topic": "graph",
+    "difficulty": 1,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function maxDepth(root) {\n}",
+      "python": "def max_depth(root):\n    pass",
+      "java": "public int maxDepth(TreeNode root) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[3,9,20,null,null,15,7]",
+        "expectedOutput": "3"
+      }
+    ],
+    "constraints": [
+      "Number of nodes <= 10^4"
+    ],
+    "hints": [
+      "Use recursion",
+      "DFS traversal"
+    ],
+    "solutionApproach": "Compute depth recursively.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(h)",
+    "tags": [
+      "tree"
+    ],
+    "estimatedTimeMinutes": 10,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Validate Binary Search Tree",
+    "description": "Given the root of a binary tree, determine if it is a valid binary search tree (BST).\n\nA BST is valid if left subtree < root < right subtree.",
+    "topic": "graph",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function isValidBST(root) {\n}",
+      "python": "def is_valid_bst(root):\n    pass",
+      "java": "public boolean isValidBST(TreeNode root) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[2,1,3]",
+        "expectedOutput": "true"
+      },
+      {
+        "input": "[5,1,4,null,null,3,6]",
+        "expectedOutput": "false"
+      }
+    ],
+    "constraints": [
+      "Nodes <= 10^4"
+    ],
+    "hints": [
+      "Inorder traversal"
+    ],
+    "solutionApproach": "Check sorted inorder sequence.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "tree"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Lowest Common Ancestor of BST",
+    "description": "Given a binary search tree (BST), find the lowest common ancestor (LCA) of two nodes.",
+    "topic": "graph",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function lowestCommonAncestor(root, p, q) {\n}",
+      "python": "def lca(root, p, q):\n    pass",
+      "java": "public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[6,2,8,0,4,7,9],2,8",
+        "expectedOutput": "6"
+      }
+    ],
+    "constraints": [
+      "BST property holds"
+    ],
+    "hints": [
+      "Use BST property"
+    ],
+    "solutionApproach": "Traverse left or right based on values.",
+    "timeComplexity": "O(h)",
+    "spaceComplexity": "O(1)",
+    "tags": [
+      "tree"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Kth Smallest Element in BST",
+    "description": "Given the root of a BST and an integer k, return the kth smallest element in the tree.",
+    "topic": "graph",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function kthSmallest(root, k) {\n}",
+      "python": "def kth_smallest(root, k):\n    pass",
+      "java": "public int kthSmallest(TreeNode root, int k) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[3,1,4,null,2],1",
+        "expectedOutput": "1"
+      }
+    ],
+    "constraints": [
+      "1 <= k <= number of nodes"
+    ],
+    "hints": [
+      "Inorder traversal"
+    ],
+    "solutionApproach": "Use inorder traversal to get sorted order.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "tree"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Serialize and Deserialize Binary Tree",
+    "description": "Design an algorithm to serialize and deserialize a binary tree.\n\nSerialization is converting a tree to a string. Deserialization reconstructs the tree.",
+    "topic": "graph",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function serialize(root) {}\nfunction deserialize(data) {}",
+      "python": "def serialize(root):\n    pass\ndef deserialize(data):\n    pass",
+      "java": "public String serialize(TreeNode root) {}\npublic TreeNode deserialize(String data) {}"
+    },
+    "testCases": [
+      {
+        "input": "[1,2,3,null,null,4,5]",
+        "expectedOutput": "same tree"
+      }
+    ],
+    "constraints": [
+      "Nodes <= 10^4"
+    ],
+    "hints": [
+      "Use BFS or DFS"
+    ],
+    "solutionApproach": "Encode tree structure using traversal.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "tree"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Word Search",
+    "description": "Given a 2D board and a word, return true if the word exists in the grid.\n\nThe word can be constructed from adjacent cells.",
+    "topic": "stack",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function exist(board, word) {\n}",
+      "python": "def exist(board, word):\n    pass",
+      "java": "public boolean exist(char[][] board, String word) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "board = [[A,B,C,E],[S,F,C,S],[A,D,E,E]], word = \"ABCCED\"",
+        "expectedOutput": "true"
+      }
+    ],
+    "constraints": [
+      "1 <= board size <= 200"
+    ],
+    "hints": [
+      "Backtracking"
+    ],
+    "solutionApproach": "Try all paths recursively.",
+    "timeComplexity": "O(m*n*4^L)",
+    "spaceComplexity": "O(L)",
+    "tags": [
+      "backtracking"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Trie (Prefix Tree)",
+    "description": "Implement a Trie with insert, search, and startsWith operations.",
+    "topic": "string",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "class Trie {\n}",
+      "python": "class Trie:\n    pass",
+      "java": "class Trie {\n}"
+    },
+    "testCases": [
+      {
+        "input": "insert(\"apple\"), search(\"apple\")",
+        "expectedOutput": "true"
+      }
+    ],
+    "constraints": [
+      "All strings lowercase"
+    ],
+    "hints": [
+      "Use tree structure"
+    ],
+    "solutionApproach": "Store characters in nodes.",
+    "timeComplexity": "O(L)",
+    "spaceComplexity": "O(N)",
+    "tags": [
+      "trie"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "LRU Cache",
+    "description": "Design a data structure that follows LRU (Least Recently Used) policy.\n\nImplement get and put in O(1) time.",
+    "topic": "hashing",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "class LRUCache {\n}",
+      "python": "class LRUCache:\n    pass",
+      "java": "class LRUCache {\n}"
+    },
+    "testCases": [
+      {
+        "input": "LRUCache(2), put(1,1), put(2,2), get(1)",
+        "expectedOutput": "1"
+      }
+    ],
+    "constraints": [
+      "O(1) operations"
+    ],
+    "hints": [
+      "Use hashmap + doubly linked list"
+    ],
+    "solutionApproach": "Maintain order using DLL.",
+    "timeComplexity": "O(1)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "design"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "LFU Cache",
+    "description": "Design a data structure that supports LFU (Least Frequently Used) cache.\n\nBoth operations should run in O(1).",
+    "topic": "hashing",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "class LFUCache {\n}",
+      "python": "class LFUCache:\n    pass",
+      "java": "class LFUCache {\n}"
+    },
+    "testCases": [
+      {
+        "input": "LFUCache(2), put(1,1), put(2,2), get(1)",
+        "expectedOutput": "1"
+      }
+    ],
+    "constraints": [
+      "O(1) operations"
+    ],
+    "hints": [
+      "Use frequency map"
+    ],
+    "solutionApproach": "Track frequency and recency.",
+    "timeComplexity": "O(1)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "design"
+    ],
+    "estimatedTimeMinutes": 35,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Median of Data Stream",
+    "description": "Design a data structure that supports adding numbers and finding the median efficiently.\n\nImplement two operations:\n1. addNum(int num)\n2. findMedian()",
+    "topic": "heap",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "class MedianFinder {\n}",
+      "python": "class MedianFinder:\n    pass",
+      "java": "class MedianFinder {\n}"
+    },
+    "testCases": [
+      {
+        "input": "addNum(1), addNum(2), findMedian()",
+        "expectedOutput": "1.5"
+      }
+    ],
+    "constraints": [
+      "Numbers can be large"
+    ],
+    "hints": [
+      "Use two heaps"
+    ],
+    "solutionApproach": "Maintain max-heap and min-heap.",
+    "timeComplexity": "O(log n)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "heap"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Rotate Image",
+    "description": "You are given an n x n 2D matrix representing an image.\n\nRotate the image by 90 degrees clockwise in-place.",
+    "topic": "matrix",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function rotate(matrix) {\n}",
+      "python": "def rotate(matrix):\n    pass",
+      "java": "public void rotate(int[][] matrix) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[[1,2,3],[4,5,6],[7,8,9]]",
+        "expectedOutput": "[[7,4,1],[8,5,2],[9,6,3]]"
+      }
+    ],
+    "constraints": [
+      "In-place modification"
+    ],
+    "hints": [
+      "Transpose + reverse"
+    ],
+    "solutionApproach": "Transpose matrix then reverse rows.",
+    "timeComplexity": "O(n^2)",
+    "spaceComplexity": "O(1)",
+    "tags": [
+      "matrix"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Spiral Matrix",
+    "description": "Given an m x n matrix, return all elements of the matrix in spiral order.",
+    "topic": "matrix",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function spiralOrder(matrix) {\n}",
+      "python": "def spiral_order(matrix):\n    pass",
+      "java": "public List<Integer> spiralOrder(int[][] matrix) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[[1,2,3],[4,5,6],[7,8,9]]",
+        "expectedOutput": "[1,2,3,6,9,8,7,4,5]"
+      }
+    ],
+    "constraints": [
+      "1 <= m,n <= 10^4"
+    ],
+    "hints": [
+      "Use boundaries"
+    ],
+    "solutionApproach": "Traverse matrix layer by layer.",
+    "timeComplexity": "O(m*n)",
+    "spaceComplexity": "O(1)",
+    "tags": [
+      "matrix"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Set Matrix Zeroes",
+    "description": "Given a matrix, if an element is 0, set its entire row and column to 0.\n\nDo it in-place.",
+    "topic": "matrix",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function setZeroes(matrix) {\n}",
+      "python": "def set_zeroes(matrix):\n    pass",
+      "java": "public void setZeroes(int[][] matrix) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[[1,1,1],[1,0,1],[1,1,1]]",
+        "expectedOutput": "[[1,0,1],[0,0,0],[1,0,1]]"
+      }
+    ],
+    "constraints": [
+      "In-place"
+    ],
+    "hints": [
+      "Use first row/column"
+    ],
+    "solutionApproach": "Mark rows and columns.",
+    "timeComplexity": "O(m*n)",
+    "spaceComplexity": "O(1)",
+    "tags": [
+      "matrix"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Subarray Sum Equals K",
+    "description": "Given an array of integers nums and an integer k, return the total number of subarrays whose sum equals k.",
+    "topic": "arrays",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function subarraySum(nums, k) {\n}",
+      "python": "def subarray_sum(nums, k):\n    pass",
+      "java": "public int subarraySum(int[] nums, int k) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[1,1,1],2",
+        "expectedOutput": "2"
+      }
+    ],
+    "constraints": [
+      "1 <= nums.length <= 10^5"
+    ],
+    "hints": [
+      "Prefix sum"
+    ],
+    "solutionApproach": "Use hashmap to store prefix sums.",
+    "timeComplexity": "O(n)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "prefix sum"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Longest Palindromic Substring",
+    "description": "Given a string s, return the longest palindromic substring.",
+    "topic": "string",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function longestPalindrome(s) {\n}",
+      "python": "def longest_palindrome(s):\n    pass",
+      "java": "public String longestPalindrome(String s) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "\"babad\"",
+        "expectedOutput": "\"bab\""
+      }
+    ],
+    "constraints": [
+      "1 <= s.length <= 1000"
+    ],
+    "hints": [
+      "Expand around center"
+    ],
+    "solutionApproach": "Check all centers.",
+    "timeComplexity": "O(n^2)",
+    "spaceComplexity": "O(1)",
+    "tags": [
+      "string"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Group Anagrams",
+    "description": "Given an array of strings, group the anagrams together.",
+    "topic": "hashing",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function groupAnagrams(strs) {\n}",
+      "python": "def group_anagrams(strs):\n    pass",
+      "java": "public List<List<String>> groupAnagrams(String[] strs) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[\"eat\",\"tea\",\"tan\",\"ate\",\"nat\",\"bat\"]",
+        "expectedOutput": "grouped lists"
+      }
+    ],
+    "constraints": [
+      "1 <= strs.length <= 10^4"
+    ],
+    "hints": [
+      "Sort strings"
+    ],
+    "solutionApproach": "Use sorted string as key.",
+    "timeComplexity": "O(n*k log k)",
+    "spaceComplexity": "O(n)",
+    "tags": [
+      "hashmap"
+    ],
+    "estimatedTimeMinutes": 20,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Pacific Atlantic Water Flow",
+    "description": "Given a grid of heights, return all coordinates where water can flow to both Pacific and Atlantic oceans.",
+    "topic": "graph",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function pacificAtlantic(heights) {\n}",
+      "python": "def pacific_atlantic(heights):\n    pass",
+      "java": "public List<List<Integer>> pacificAtlantic(int[][] heights) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "matrix input",
+        "expectedOutput": "coordinates"
+      }
+    ],
+    "constraints": [
+      "m,n <= 200"
+    ],
+    "hints": [
+      "Reverse DFS"
+    ],
+    "solutionApproach": "Run DFS from edges.",
+    "timeComplexity": "O(m*n)",
+    "spaceComplexity": "O(m*n)",
+    "tags": [
+      "graph"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Network Delay Time",
+    "description": "You are given a network of n nodes and travel times.\n\nReturn time it takes for all nodes to receive signal from source.",
+    "topic": "graph",
+    "difficulty": 2,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function networkDelayTime(times, n, k) {\n}",
+      "python": "def network_delay_time(times, n, k):\n    pass",
+      "java": "public int networkDelayTime(int[][] times, int n, int k) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "[[2,1,1],[2,3,1],[3,4,1]],4,2",
+        "expectedOutput": "2"
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 100"
+    ],
+    "hints": [
+      "Dijkstra"
+    ],
+    "solutionApproach": "Use shortest path algorithm.",
+    "timeComplexity": "O(E log V)",
+    "spaceComplexity": "O(V)",
+    "tags": [
+      "graph"
+    ],
+    "estimatedTimeMinutes": 25,
+    "isActive": true,
+    "source": "leetcode-style"
+  },
+  {
+    "title": "Cheapest Flights Within K Stops",
+    "description": "Find cheapest flight price from src to dst with at most k stops.",
+    "topic": "graph",
+    "difficulty": 3,
+    "type": "coding",
+    "starterCode": {
+      "javascript": "function findCheapestPrice(n, flights, src, dst, k) {\n}",
+      "python": "def find_cheapest_price(n, flights, src, dst, k):\n    pass",
+      "java": "public int findCheapestPrice(int n, int[][] flights, int src, int dst, int k) {\n}"
+    },
+    "testCases": [
+      {
+        "input": "3, [[0,1,100],[1,2,100],[0,2,500]],0,2,1",
+        "expectedOutput": "200"
+      }
+    ],
+    "constraints": [
+      "0 <= k < n"
+    ],
+    "hints": [
+      "BFS or Dijkstra"
+    ],
+    "solutionApproach": "Use BFS with stops limit.",
+    "timeComplexity": "O(E log V)",
+    "spaceComplexity": "O(V)",
+    "tags": [
+      "graph"
+    ],
+    "estimatedTimeMinutes": 30,
+    "isActive": true,
+    "source": "leetcode-style"
+  }
+]

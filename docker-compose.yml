@@ -59,20 +59,34 @@ services:
       NODE_ENV: production
       PORT: 5000
       MONGODB_URI: mongodb://admin:password123@mongo:27017/ai-interview?authSource=admin
-      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_ACCESS_SECRET: your-super-secret-access-key-change-in-production
       JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production
-      JWT_ACCESS_EXPIRATION_MINUTES: 30
-      JWT_REFRESH_EXPIRATION_DAYS: 7
+      JWT_ACCESS_EXPIRATION: 30m
+      JWT_REFRESH_EXPIRATION: 7d
       AI_PROVIDER: mock
       AI_API_KEY: ''
       AI_MODEL: ''
       PISTON_URL: http://piston:2000
+      ML_SERVICE_URL: http://ml_service:8000/predict
       REDIS_URL: redis://redis:6379
       CORS_ORIGIN: http://localhost
     depends_on:
       - mongo
       - redis
       - piston
+      - ml_service
+    networks:
+      - app-network
+
+  # ML score calibration service
+  ml_service:
+    build:
+      context: ./ml_service
+      dockerfile: Dockerfile
+    container_name: ai-interview-ml
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
     networks:
       - app-network
 

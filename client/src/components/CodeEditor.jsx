@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import Editor from '@monaco-editor/react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCode } from '../store/interviewSlice';
@@ -11,10 +11,17 @@ const LANGUAGE_MAP = {
   c: 'c',
 };
 
-const CodeEditor = ({ language = 'javascript', readOnly = false }) => {
+const CodeEditor = forwardRef(({ language = 'javascript', readOnly = false }, ref) => {
   const dispatch = useDispatch();
   const code = useSelector((state) => state.interview.code);
   const editorRef = useRef(null);
+
+  // Expose editor methods to parent component
+  useImperativeHandle(ref, () => ({
+    getValue: () => editorRef.current?.getValue() || '',
+    setValue: (value) => editorRef.current?.setValue(value || ''),
+    focus: () => editorRef.current?.focus(),
+  }), []);
 
   const handleEditorDidMount = useCallback((editor) => {
     editorRef.current = editor;
@@ -76,6 +83,7 @@ const CodeEditor = ({ language = 'javascript', readOnly = false }) => {
       />
     </div>
   );
-};
+});
 
+CodeEditor.displayName = 'CodeEditor';
 export default CodeEditor;
